@@ -48,11 +48,7 @@ func (board *Board) Reset() error {
 	}
 
 	// 记录位置初始化
-	board.logging.Debug("All locations have been initialized",
-		zap.Reflect("hospital", hospital),
-		zap.Reflect("city", city),
-		zap.Reflect("school", school),
-		zap.Reflect("shrine", shrine))
+	board.logging.Debug("All locations have been initialized")
 
 	// 设置地图位置关系
 	hospital.Right = shrine
@@ -79,7 +75,10 @@ func (board *Board) Reset() error {
 	board.locations[LocationSchool] = school
 	board.locations[LocationShrine] = shrine
 
-	board.logging.Debug("The locations were added to the game board mapping")
+	board.logging.Debug("The locations were added to the game board mapping", zap.Reflect("hospital", hospital),
+		zap.Reflect("city", city),
+		zap.Reflect("school", school),
+		zap.Reflect("shrine", shrine))
 
 	// 将角色放置在起始位置
 	for _, char := range board.characters {
