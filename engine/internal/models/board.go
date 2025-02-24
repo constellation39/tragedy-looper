@@ -90,7 +90,7 @@ func (board *Board) Reset() error {
 			zap.String("location", string(char.StartLocation)))
 	}
 
-	board.logging.Info("All character positions have been successfully Reset")
+	board.logging.Debug("All character positions have been successfully Reset")
 	return nil
 }
 
@@ -148,7 +148,7 @@ func (board *Board) ResolveActionCards(gs *GameState) error {
 		return err
 	}
 
-	board.logging.Info("All action cards have been successfully processed")
+	board.logging.Debug("All action cards have been successfully processed")
 	return nil
 }
 
@@ -323,7 +323,7 @@ func (board *Board) handleCardsAfterResolution(cards []Card) error {
 		}
 	}
 
-	board.logging.Info("All card effects after resolution have been successfully processed")
+	board.logging.Debug("All card effects after resolution have been successfully processed")
 	return nil
 }
 
@@ -391,7 +391,7 @@ func (board *Board) MoveTo(character *Character, location LocationType) error {
 		return err
 	}
 
-	board.logging.Info("Character has been successfully moved",
+	board.logging.Debug("Character has been successfully moved",
 		zap.String("character", string(character.Name)),
 		zap.String("from", string(character.CurrentLocation)),
 		zap.String("to", string(location)))
@@ -449,7 +449,7 @@ func (board *Board) ResetCounters() error {
 			zap.Int("newValue", 0))
 	}
 
-	board.logging.Info("All counters have been successfully Reset")
+	board.logging.Debug("All counters have been successfully Reset")
 	return nil
 }
 
@@ -520,6 +520,6 @@ func (board *Board) ReturnAllCards(state *GameState) error {
 		}
 	}
 
-	board.logging.Info("All cards have been successfully returned")
+	board.logging.Debug("All cards have been successfully returned")
 	return nil
 }

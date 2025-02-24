@@ -67,10 +67,10 @@ func (gs *GameState) PrintGameState() {
 		return
 	}
 
-	gs.logging.Info("=================== Game State Overview ===================")
+	gs.logging.Debug("=================== Game State Overview ===================")
 
 	// 1. 基本游戏信息
-	gs.logging.Info("Basic Game Information",
+	gs.logging.Debug("Basic Game Information",
 		zap.Int("Current Loop", gs.CurrentLoop),
 		zap.Int("Days Per Loop", gs.Script.DaysPerLoop),
 		zap.Int("Current Day", gs.CurrentDay),
@@ -90,7 +90,7 @@ func (gs *GameState) PrintGameState() {
 			subPlotNames = append(subPlotNames, subplot.Name)
 		}
 
-		gs.logging.Info("Script Information",
+		gs.logging.Debug("Script Information",
 			zap.String("Main Plot", mainPlotName),
 			zap.Strings("Sub Plots", subPlotNames),
 			zap.Int("Maximum Loops", gs.Script.MaxLoops),
@@ -98,7 +98,7 @@ func (gs *GameState) PrintGameState() {
 	}
 
 	// 3. 详细的角色信息
-	gs.logging.Info("---------- Character Status ----------")
+	gs.logging.Debug("---------- Character Status ----------")
 	for _, char := range gs.Characters {
 		if char == nil {
 			continue
@@ -110,7 +110,7 @@ func (gs *GameState) PrintGameState() {
 		}
 
 		// 角色基本信息
-		gs.logging.Info("Character Details",
+		gs.logging.Debug("Character Details",
 			zap.String("Name", string(char.Name)),
 			zap.String("Role", roleType),
 			zap.String("Current Location", string(char.Location())),
@@ -118,7 +118,7 @@ func (gs *GameState) PrintGameState() {
 			zap.Bool("Is Alive", char.IsAlive()))
 
 		// 角色计数器信息
-		gs.logging.Info("Character Counters",
+		gs.logging.Debug("Character Counters",
 			zap.String("Character", string(char.Name)),
 			zap.Int("Goodwill", char.Goodwill()),
 			zap.Int("Goodwill Limit", char.GoodwillLimit),
@@ -132,13 +132,13 @@ func (gs *GameState) PrintGameState() {
 			abilities = append(abilities, fmt.Sprintf("%s (Cost: %d, Can Be Refused: %v)",
 				ability.Name, ability.Cost, ability.CanBeRefused))
 		}
-		gs.logging.Info("Character Abilities",
+		gs.logging.Debug("Character Abilities",
 			zap.String("Character", string(char.Name)),
 			zap.Strings("Goodwill Abilities", abilities))
 	}
 
 	// 4. 位置信息
-	gs.logging.Info("---------- Location Status ----------")
+	gs.logging.Debug("---------- Location Status ----------")
 	if gs.Board != nil {
 		locations := []LocationType{LocationHospital, LocationCity, LocationSchool, LocationShrine}
 		for _, locType := range locations {
@@ -153,7 +153,7 @@ func (gs *GameState) PrintGameState() {
 				characterNames = append(characterNames, string(charName))
 			}
 
-			gs.logging.Info("Location Details",
+			gs.logging.Debug("Location Details",
 				zap.String("Location", string(locType)),
 				zap.Int("Intrigue Count", loc.Intrigue()),
 				zap.Int("Character Count", len(loc.Characters)),
@@ -163,9 +163,9 @@ func (gs *GameState) PrintGameState() {
 	}
 
 	// 5. 主角方信息
-	gs.logging.Info("---------- Protagonists Status ----------")
+	gs.logging.Debug("---------- Protagonists Status ----------")
 	for _, protagonist := range gs.Protagonists {
-		gs.logging.Info("Protagonist Details",
+		gs.logging.Debug("Protagonist Details",
 			zap.String("ID", protagonist.ID),
 			zap.String("Name", protagonist.Name),
 			zap.Bool("Is Leader", protagonist.IsLeader),
@@ -175,17 +175,17 @@ func (gs *GameState) PrintGameState() {
 
 	// 6. 幕后主使信息
 	if gs.Mastermind != nil {
-		gs.logging.Info("---------- Mastermind Status ----------",
+		gs.logging.Debug("---------- Mastermind Status ----------",
 			zap.Int("Cards In Hand", len(gs.Mastermind.HandCards)),
 			zap.Int("Once Cards Used", len(gs.Mastermind.OnceCards)))
 	}
 
 	// 7. Action Cards Status
-	gs.logging.Info("---------- Action Cards Status ----------")
+	gs.logging.Debug("---------- Action Cards Status ----------")
 
 	// 当前回合的行动卡
 	if gs.Board != nil && gs.Board.actionCards != nil {
-		gs.logging.Info("Current Action Cards on Board")
+		gs.logging.Debug("Current Action Cards on Board")
 
 		// 按优先级分类打印卡牌
 		// 1. Forbid Movement cards
@@ -224,7 +224,7 @@ func (gs *GameState) PrintGameState() {
 						}
 					}
 
-					gs.logging.Info("Action Card",
+					gs.logging.Debug("Action Card",
 						zap.String("Type", string(card.Type())),
 						zap.String("ID", card.Id()),
 						zap.String("Target", targetInfo),
@@ -237,45 +237,45 @@ func (gs *GameState) PrintGameState() {
 	}
 
 	// 打印主角方的手牌和已使用的一次性卡牌
-	gs.logging.Info("---------- Protagonists Cards ----------")
+	gs.logging.Debug("---------- Protagonists Cards ----------")
 	for _, protagonist := range gs.Protagonists {
 		// 打印手牌
-		gs.logging.Info(fmt.Sprintf("Protagonist %s Hand Cards", protagonist.Name))
+		gs.logging.Debug(fmt.Sprintf("Protagonist %s Hand Cards", protagonist.Name))
 		for _, card := range protagonist.HandCards {
-			gs.logging.Info("Card",
+			gs.logging.Debug("Card",
 				zap.String("Type", string(card.Type())),
 				zap.String("ID", card.Id()),
 				zap.Bool("OncePerLoop", card.IsOncePerLoop()))
 		}
 
 		// 打印已使用的一次性卡牌
-		gs.logging.Info(fmt.Sprintf("Protagonist %s Used Once-Per-Loop Cards", protagonist.Name))
+		gs.logging.Debug(fmt.Sprintf("Protagonist %s Used Once-Per-Loop Cards", protagonist.Name))
 		for _, card := range protagonist.OnceCards {
-			gs.logging.Info("Used Once Card",
+			gs.logging.Debug("Used Once Card",
 				zap.String("Type", string(card.Type())),
 				zap.String("ID", card.Id()))
 		}
 	}
 
 	// 打印幕后主使的手牌和已使用的一次性卡牌
-	gs.logging.Info("---------- Mastermind Cards ----------")
+	gs.logging.Debug("---------- Mastermind Cards ----------")
 	if gs.Mastermind != nil {
 		// 打印手牌
-		gs.logging.Info("Mastermind Hand Cards")
+		gs.logging.Debug("Mastermind Hand Cards")
 		for _, card := range gs.Mastermind.HandCards {
-			gs.logging.Info("Card",
+			gs.logging.Debug("Card",
 				zap.String("Type", string(card.Type())),
 				zap.String("ID", card.Id()),
 				zap.Bool("OncePerLoop", card.IsOncePerLoop()))
 		}
 
 		// 打印已使用的一次性卡牌
-		gs.logging.Info("Mastermind Used Once-Per-Loop Cards")
+		gs.logging.Debug("Mastermind Used Once-Per-Loop Cards")
 		for _, card := range gs.Mastermind.OnceCards {
-			gs.logging.Info("Used Once Card",
+			gs.logging.Debug("Used Once Card",
 				zap.String("Type", string(card.Type())),
 				zap.String("ID", card.Id()))
 		}
 	}
-	gs.logging.Info("===================== End of State =====================")
+	gs.logging.Debug("===================== End of State =====================")
 }

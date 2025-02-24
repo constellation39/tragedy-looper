@@ -21,7 +21,7 @@ func main() {
 	}(logging)
 
 	// 使用结构化的日志
-	logging.Info("Tragedy Looper game initializing...",
+	logging.Debug("Tragedy Looper game initializing...",
 		zap.String("log_level", loggerOptions.Level.String()),
 		zap.String("log_file", loggerOptions.Filename),
 	)
@@ -32,9 +32,9 @@ func main() {
 	)
 
 	gameController := controllers.NewGameController(logging, firstSteps1)
-	logging.Info("Game controller initialized")
+	logging.Debug("Game controller initialized")
 
-	logging.Info("Attempting to start game...")
+	logging.Debug("Attempting to start game...")
 	if err = gameController.StartGame(); err != nil {
 		logging.Error("Game start game failed",
 			zap.Error(err),
@@ -43,7 +43,7 @@ func main() {
 		return
 	}
 
-	logging.Info("Game successfully started",
+	logging.Debug("Game successfully started",
 		zap.String("status", "running"),
 		zap.String("scenario", "FirstSteps1"),
 	)
