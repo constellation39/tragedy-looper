@@ -57,38 +57,39 @@ func NewMastermind() *Mastermind {
 
 // PlaceActionCards 允许幕后主使放置行动卡
 func (mastermind *Mastermind) PlaceActionCards(state *GameState) error {
-	//if len(cards) > mastermind.MaxCardsPerDay {
-	//	return fmt.Errorf("每天最多只能打出 %d 张牌", mastermind.MaxCardsPerDay)
-	//}
-
-	character := state.Script.Characters[0]
-
 	for i := 0; i < 3; i++ {
-
+		mastermindHandCards := mastermind.HandCards[i]
 		switch i {
 		case 0:
-			mastermind.HandCards[i].IsValidTarget(character)
-			err := mastermind.HandCards[i].SetTarget(character)
+			character := state.Script.Characters[0]
+			err := state.Board.SetCard(character, mastermindHandCards)
 			if err != nil {
 				return err
 			}
-			return mastermind.PlaceCards(mastermind.HandCards[i])
+			err = mastermind.PlaceCards(mastermindHandCards)
+			if err != nil {
+				return err
+			}
 		case 1:
 			locationShrine := state.Board.GetLocation(LocationShrine)
-			mastermind.HandCards[i].IsValidTarget(locationShrine)
-			err := mastermind.HandCards[i].SetTarget(locationShrine)
+			err := state.Board.SetCard(locationShrine, mastermindHandCards)
 			if err != nil {
 				return err
 			}
-			return mastermind.PlaceCards(mastermind.HandCards[i])
+			err = mastermind.PlaceCards(mastermindHandCards)
+			if err != nil {
+				return err
+			}
 		case 2:
 			locationHospital := state.Board.GetLocation(LocationHospital)
-			mastermind.HandCards[i].IsValidTarget(locationHospital)
-			err := mastermind.HandCards[i].SetTarget(locationHospital)
+			err := state.Board.SetCard(locationHospital, mastermindHandCards)
 			if err != nil {
 				return err
 			}
-			return mastermind.PlaceCards(mastermind.HandCards[i])
+			err = mastermind.PlaceCards(mastermindHandCards)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -149,37 +150,37 @@ func (protagonist *Protagonist) PlaceActionCards(state *GameState) error {
 	switch protagonist.ID {
 	case "A":
 		character := state.Script.Characters[0]
-		protagonist.HandCards[0].IsValidTarget(character)
-		err := protagonist.HandCards[0].SetTarget(character)
+		card := protagonist.HandCards[0]
+		err := state.Board.SetCard(character, card)
 		if err != nil {
 			return err
 		}
-		card := protagonist.HandCards[0]
 		err = protagonist.PlaceCards(card)
-		state.Board.actionCards = append(state.Board.actionCards, card)
-		return err
+		if err != nil {
+			return err
+		}
 	case "B":
 		character := state.Script.Characters[1]
-		protagonist.HandCards[1].IsValidTarget(character)
-		err := protagonist.HandCards[1].SetTarget(character)
+		card := protagonist.HandCards[1]
+		err := state.Board.SetCard(character, card)
 		if err != nil {
 			return err
 		}
-		card := protagonist.HandCards[1]
 		err = protagonist.PlaceCards(card)
-		state.Board.actionCards = append(state.Board.actionCards, card)
-		return err
+		if err != nil {
+			return err
+		}
 	case "C":
 		character := state.Script.Characters[2]
-		protagonist.HandCards[2].IsValidTarget(character)
-		err := protagonist.HandCards[2].SetTarget(character)
+		card := protagonist.HandCards[2]
+		err := state.Board.SetCard(character, card)
 		if err != nil {
 			return err
 		}
-		card := protagonist.HandCards[2]
 		err = protagonist.PlaceCards(card)
-		state.Board.actionCards = append(state.Board.actionCards, card)
-		return err
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

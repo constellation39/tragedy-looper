@@ -8,31 +8,43 @@ import (
 )
 
 func main() {
+	// 配置日志选项
 	loggerOptions := logger.DefaultOptions()
 	loggerOptions.Level = zap.DebugLevel
 	loggerOptions.Filename = "logs/tragedy-looper.log"
 	logging, err := logger.NewLogger(loggerOptions)
 	if err != nil {
-		panic(err)
+		panic("Failed to initialize logger: " + err.Error())
 	}
 	defer func(logging *zap.Logger) {
 		_ = logging.Sync()
 	}(logging)
 
-	logging.Info("Start Game.")
+	// 使用结构化的日志
+	logging.Info("Tragedy Looper game initializing...",
+		zap.String("log_level", loggerOptions.Level.String()),
+		zap.String("log_file", loggerOptions.Filename),
+	)
 
-	// 1. 创建脚本
 	firstSteps1 := first_steps.NewFirstSteps1()
+	logging.Debug("First steps scenario loaded",
+		zap.String("scenario", "FirstSteps1"),
+	)
 
-	// 2. 使用 GameController 来控制游戏
 	gameController := controllers.NewGameController(logging, firstSteps1)
+	logging.Info("Game controller initialized")
 
-	// 3. 启动游戏
-	err = gameController.StartGame()
-	if err != nil {
-		logging.Error("Failed to start game.", zap.Error(err))
+	logging.Info("Attempting to start game...")
+	if err = gameController.StartGame(); err != nil {
+		logging.Error("Game start game failed",
+			zap.Error(err),
+			zap.String("scenario", "FirstSteps1"),
+		)
 		return
 	}
 
-	logging.Info("Game Started.")
+	logging.Info("Game successfully started",
+		zap.String("status", "running"),
+		zap.String("scenario", "FirstSteps1"),
+	)
 }

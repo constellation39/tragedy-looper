@@ -327,8 +327,8 @@ func (board *Board) handleCardsAfterResolution(cards []Card) error {
 	return nil
 }
 
-// AddCard 在指定位置添加卡牌
-func (board *Board) AddCard(target TargetType, card Card) error {
+// SetCard 在指定位置添加卡牌
+func (board *Board) SetCard(target TargetType, card Card) error {
 	board.logging.Debug("Adding card to target",
 		zap.String("cardID", card.Id()),
 		zap.Any("target", target))
@@ -348,6 +348,8 @@ func (board *Board) AddCard(target TargetType, card Card) error {
 			zap.Error(err))
 		return err
 	}
+
+	board.actionCards = append(board.actionCards, card)
 
 	board.logging.Debug("Card has been successfully added to target")
 	return nil

@@ -22,7 +22,7 @@ func NewGameController(logger *zap.Logger, script *models.Script) *GameControlle
 }
 
 func (gc *GameController) StartGame() error {
-	gc.logger.Info("Game initialization started in controller")
+	gc.logger.Debug("Game initialization started in controller")
 
 	// 1. 先设置脚本
 	err := gc.setupGame()
@@ -31,7 +31,7 @@ func (gc *GameController) StartGame() error {
 		return err
 	}
 
-	gc.logger.Info("Enter the main game loop from the controller")
+	gc.logger.Debug("Enter the main game loop from the controller")
 
 	// 2. 进入游戏主循环
 	err = gc.gameLoop()
@@ -56,10 +56,10 @@ func (gc *GameController) setupGame() error {
 	// 设置脚本到 state
 	gc.state.Script = gc.script
 
-	gc.logger.Info("Setup Mastermind")
+	gc.logger.Debug("Setup Mastermind")
 	gc.state.Mastermind = models.NewMastermind()
 
-	gc.logger.Info("Setup Protagonists")
+	gc.logger.Debug("Setup Protagonists")
 	gc.state.Protagonists = models.Protagonists{
 		models.NewProtagonist("A", true),
 		models.NewProtagonist("B", false),
@@ -84,10 +84,10 @@ func (gc *GameController) setupGame() error {
 		gc.state.Roles = append(gc.state.Roles, role)
 	}
 
-	gc.logger.Info("Initialize the game board")
+	gc.logger.Debug("Initialize the game board")
 	gc.state.Board = models.NewBoard(gc.logger, gc.state.Characters)
 
-	gc.logger.Info("Game setup complete")
+	gc.logger.Debug("Game setup complete")
 	return nil
 }
 
@@ -96,7 +96,7 @@ func (gc *GameController) gameLoop() error {
 	for {
 		// 检查是否达到循环上限
 		if gc.state.CurrentLoop >= gc.script.MaxLoops {
-			gc.logger.Info("Reached the maximum number of loops, entering final guess phase",
+			gc.logger.Debug("Reached the maximum number of loops, entering final guess phase",
 				zap.Int("CurrentLoop", gc.state.CurrentLoop),
 				zap.Int("MaxLoops", gc.script.MaxLoops))
 			err := gc.enterFinalGuess()
@@ -117,7 +117,7 @@ func (gc *GameController) gameLoop() error {
 		}
 
 		// 时间螺旋阶段
-		gc.logger.Info("Enter time spiral phase",
+		gc.logger.Debug("Enter time spiral phase",
 			zap.Int("CurrentLoop", gc.state.CurrentLoop))
 		err = gc.timeSpiralPhase()
 		if err != nil {
@@ -128,7 +128,7 @@ func (gc *GameController) gameLoop() error {
 		}
 
 		// 角色归位
-		gc.logger.Info("Reset character positions",
+		gc.logger.Debug("Reset character positions",
 			zap.Int("CurrentLoop", gc.state.CurrentLoop))
 		err = gc.state.Board.Reset() // 原来的 reset() 在 Board 上
 		if err != nil {
@@ -139,7 +139,7 @@ func (gc *GameController) gameLoop() error {
 		}
 
 		// 重置计数器
-		gc.logger.Info("Reset counters", zap.Int("CurrentLoop", gc.state.CurrentLoop))
+		gc.logger.Debug("Reset counters", zap.Int("CurrentLoop", gc.state.CurrentLoop))
 		err = gc.state.Board.ResetCounters()
 		if err != nil {
 			gc.logger.Error("Reset counters failed",
@@ -149,7 +149,7 @@ func (gc *GameController) gameLoop() error {
 		}
 
 		// 返回所有卡牌
-		gc.logger.Info("Return all cards", zap.Int("CurrentLoop", gc.state.CurrentLoop))
+		gc.logger.Debug("Return all cards", zap.Int("CurrentLoop", gc.state.CurrentLoop))
 		err = gc.state.Board.ReturnAllCards(gc.state)
 		if err != nil {
 			gc.logger.Error("Return cards failed",
@@ -159,7 +159,7 @@ func (gc *GameController) gameLoop() error {
 		}
 
 		// 每日流程
-		gc.logger.Info("Start daily phase", zap.Int("CurrentLoop", gc.state.CurrentLoop))
+		gc.logger.Debug("Start daily phase", zap.Int("CurrentLoop", gc.state.CurrentLoop))
 		err = gc.dailyPhases()
 		if err != nil {
 			gc.logger.Error("Daily phase failed",
@@ -170,13 +170,13 @@ func (gc *GameController) gameLoop() error {
 
 		// 检查胜利条件
 		if gc.checkWinCondition() {
-			gc.logger.Info("Protagonists have met the win condition",
+			gc.logger.Debug("Protagonists have met the win condition",
 				zap.Int("CurrentLoop", gc.state.CurrentLoop))
 			gc.state.IsGameOver = true
 			gc.state.WinnerType = "Protagonists"
 			break
 		} else if gc.state.CurrentLoop >= gc.script.MaxLoops {
-			gc.logger.Info("Reached the maximum number of loops, entering final guess",
+			gc.logger.Debug("Reached the maximum number of loops, entering final guess",
 				zap.Int("CurrentLoop", gc.state.CurrentLoop))
 			err = gc.enterFinalGuess()
 			if err != nil {
@@ -185,14 +185,14 @@ func (gc *GameController) gameLoop() error {
 			}
 			break
 		} else {
-			gc.logger.Info("Enter the next loop",
+			gc.logger.Debug("Enter the next loop",
 				zap.Int("CurrentLoop", gc.state.CurrentLoop),
 				zap.Int("NextLoop", gc.state.CurrentLoop+1))
 			gc.state.CurrentLoop++
 		}
 	}
 
-	gc.logger.Info("Game loop ended",
+	gc.logger.Debug("Game loop ended",
 		zap.String("Winner", gc.state.WinnerType),
 		zap.Bool("GameOver", gc.state.IsGameOver))
 	return nil
@@ -200,7 +200,7 @@ func (gc *GameController) gameLoop() error {
 
 // enterFinalGuess 进入最终猜测阶段
 func (gc *GameController) enterFinalGuess() error {
-	gc.logger.Info("Enter final guess phase")
+	gc.logger.Debug("Enter final guess phase")
 	if gc.state.GuessMade {
 		gc.logger.Error("Final guess has already been made")
 		return errors.New("最终猜测已经进行过")
@@ -217,10 +217,10 @@ func (gc *GameController) enterFinalGuess() error {
 	gc.state.IsGameOver = true
 
 	if correctGuess {
-		gc.logger.Info("Protagonists win because the guess is correct")
+		gc.logger.Debug("Protagonists win because the guess is correct")
 		gc.state.WinnerType = "Protagonists"
 	} else {
-		gc.logger.Info("Mastermind wins because the final guess is wrong")
+		gc.logger.Debug("Mastermind wins because the final guess is wrong")
 		gc.state.WinnerType = "Mastermind"
 	}
 
@@ -229,26 +229,26 @@ func (gc *GameController) enterFinalGuess() error {
 
 // prepareLoop 准备新的循环
 func (gc *GameController) prepareLoop() error {
-	gc.logger.Info("=================== Preparing New Loop ===================",
+	gc.logger.Debug("=================== Preparing New Loop ===================",
 		zap.Int("Loop", gc.state.CurrentLoop+1))
 
 	// 来源: 知识库中的 "Preparing the Loop" 部分
-	gc.logger.Info("1. Time Spiral Phase - Protagonists discussion time")
+	gc.logger.Debug("1. Time Spiral Phase - Protagonists discussion time")
 	// TODO: 实现时间螺旋阶段的具体逻辑
 
-	gc.logger.Info("2. Returning characters to starting positions")
+	gc.logger.Debug("2. Returning characters to starting positions")
 	err := gc.state.Board.Reset()
 	if err != nil {
 		return err
 	}
 
-	gc.logger.Info("3. Removing and replacing counters")
+	gc.logger.Debug("3. Removing and replacing counters")
 	err = gc.state.Board.ResetCounters()
 	if err != nil {
 		return err
 	}
 
-	gc.logger.Info("4. Returning all action cards to hands")
+	gc.logger.Debug("4. Returning all action cards to hands")
 	err = gc.state.Board.ReturnAllCards(gc.state)
 	if err != nil {
 		return err
@@ -265,7 +265,7 @@ func (gc *GameController) prepareLoop() error {
 		character.ResetState()
 	}
 
-	gc.logger.Info("Loop preparation completed",
+	gc.logger.Debug("Loop preparation completed",
 		zap.Int("NewLoop", gc.state.CurrentLoop))
 
 	// 打印初始状态
@@ -282,7 +282,7 @@ func (gc *GameController) timeSpiralPhase() error {
 
 // dailyPhases 每日流程开始
 func (gc *GameController) dailyPhases() error {
-	gc.logger.Info("Start daily phase",
+	gc.logger.Debug("Start daily phase",
 		zap.Int("CurrentLoop", gc.state.CurrentLoop),
 		zap.Int("CurrentDay", gc.state.CurrentDay),
 		zap.Int("MaxDays", gc.script.DaysPerLoop))
@@ -290,7 +290,7 @@ func (gc *GameController) dailyPhases() error {
 	for {
 		// 是否为最后一天
 		if gc.state.CurrentDay > gc.script.DaysPerLoop {
-			gc.logger.Info("Reached the last day of the loop",
+			gc.logger.Debug("Reached the last day of the loop",
 				zap.Int("CurrentLoop", gc.state.CurrentLoop),
 				zap.Int("CompletedDays", gc.state.CurrentDay-1))
 			break
@@ -304,7 +304,7 @@ func (gc *GameController) dailyPhases() error {
 			return err
 		}
 		if gc.state.IsGameOver {
-			gc.logger.Info("Game ended during the daily phase",
+			gc.logger.Debug("Game ended during the daily phase",
 				zap.String("Winner", gc.state.WinnerType),
 				zap.Int("EndDay", gc.state.CurrentDay),
 				zap.Int("EndLoop", gc.state.CurrentLoop))
@@ -317,7 +317,7 @@ func (gc *GameController) dailyPhases() error {
 			zap.Int("CurrentLoop", gc.state.CurrentLoop))
 	}
 
-	gc.logger.Info("Daily phase of the current loop completed",
+	gc.logger.Debug("Daily phase of the current loop completed",
 		zap.Int("CurrentLoop", gc.state.CurrentLoop),
 		zap.Int("TotalProcessedDays", gc.state.CurrentDay-1))
 	return nil
@@ -325,7 +325,7 @@ func (gc *GameController) dailyPhases() error {
 
 // processDay 执行一天的流程
 func (gc *GameController) processDay() error {
-	gc.logger.Info("=================== New Day Started ===================",
+	gc.logger.Debug("=================== New Day Started ===================",
 		zap.Int("Day", gc.state.CurrentDay),
 		zap.Int("CurrentLoop", gc.state.CurrentLoop))
 
@@ -343,7 +343,7 @@ func (gc *GameController) processDay() error {
 	}
 
 	for _, phase := range phases {
-		gc.logger.Info("----------- Phase Started -----------",
+		gc.logger.Debug("----------- Phase Started -----------",
 			zap.String("Phase", string(phase)))
 
 		err := gc.processDayPhase(phase)
@@ -358,13 +358,13 @@ func (gc *GameController) processDay() error {
 		gc.state.PrintGameState()
 
 		if gc.state.IsGameOver {
-			gc.logger.Info("Game ended during day phases",
+			gc.logger.Debug("Game ended during day phases",
 				zap.String("Winner", gc.state.WinnerType))
 			return nil
 		}
 	}
 
-	gc.logger.Info("=================== Day Completed ===================",
+	gc.logger.Debug("=================== Day Completed ===================",
 		zap.Int("Day", gc.state.CurrentDay),
 		zap.Int("CurrentLoop", gc.state.CurrentLoop))
 
@@ -373,7 +373,7 @@ func (gc *GameController) processDay() error {
 
 // processDayPhase 处理每日各阶段
 func (gc *GameController) processDayPhase(phase models.DayPhase) error {
-	gc.logger.Info("Starting to process the day phase",
+	gc.logger.Debug("Starting to process the day phase",
 		zap.String("phase", string(phase)),
 		zap.Int("day", gc.state.CurrentDay),
 		zap.Int("CurrentLoop", gc.state.CurrentLoop))
@@ -423,7 +423,7 @@ func (gc *GameController) handleDayStart() error {
 
 // handleMastermindAction Mastermind放置行动卡
 func (gc *GameController) handleMastermindAction() error {
-	gc.logger.Info("Mastermind placing action cards...")
+	gc.logger.Debug("Mastermind placing action cards...")
 	// 来源: 知识库中提到 "Mastermind plays 3 action cards face down"
 	gc.logger.Debug("Mastermind must place exactly 3 cards face down")
 	err := gc.state.Mastermind.PlaceActionCards(gc.state)
@@ -435,7 +435,7 @@ func (gc *GameController) handleMastermindAction() error {
 
 // handleProtagonistsAction 主角方放置行动卡
 func (gc *GameController) handleProtagonistsAction() error {
-	gc.logger.Info("Protagonists placing action cards...")
+	gc.logger.Debug("Protagonists placing action cards...")
 	// 来源: 知识库中提到 "Protagonists play one card each face down"
 	gc.logger.Debug("Each Protagonist must place exactly 1 card face down")
 	return gc.state.Protagonists.PlaceActionCards(gc.state)
@@ -443,7 +443,7 @@ func (gc *GameController) handleProtagonistsAction() error {
 
 // handleResolveCards 处理卡牌结算
 func (gc *GameController) handleResolveCards() error {
-	gc.logger.Info("Starting to resolve cards...")
+	gc.logger.Debug("Starting to resolve cards...")
 	// 来源: 知识库中提到的卡牌结算顺序
 	gc.logger.Debug("Cards will be resolved in order: 1.Forbid Movement, 2.Movement, 3.Other Forbid, 4.Other cards")
 	return gc.state.Board.ResolveActionCards(gc.state)
@@ -457,12 +457,12 @@ func (gc *GameController) handleLeaderGoodwill() error {
 }
 
 func (gc *GameController) handleIncidents() error {
-	gc.logger.Info("Start processing incidents phase")
+	gc.logger.Debug("Start processing incidents phase")
 
 	for _, incident := range gc.state.Script.Incidents {
 		gc.logger.Debug("Check incident", zap.String("IncidentType", string(incident.Type())))
 		if gc.canTriggerIncident(incident) {
-			gc.logger.Info("Trigger incident", zap.String("IncidentType", string(incident.Type())))
+			gc.logger.Debug("Trigger incident", zap.String("IncidentType", string(incident.Type())))
 			err := gc.executeIncident(incident)
 			if err != nil {
 				gc.logger.Error("Execute incident failed",
@@ -473,7 +473,7 @@ func (gc *GameController) handleIncidents() error {
 		}
 	}
 
-	gc.logger.Info("Incidents phase completed")
+	gc.logger.Debug("Incidents phase completed")
 	return nil
 }
 
@@ -503,7 +503,7 @@ func (gc *GameController) triggerPhaseAbilities(phase models.DayPhase) error {
 
 // 触发某个 Timing 下的所有能力
 func (gc *GameController) triggerAbilities(timing models.RoleAbilityTiming) error {
-	gc.logger.Info("Ability trigger phase started",
+	gc.logger.Debug("Ability trigger phase started",
 		zap.String("Timing", string(timing)))
 
 	var mustAbilities, mandatoryAbilities, optionalAbilities []models.RoleAbility
