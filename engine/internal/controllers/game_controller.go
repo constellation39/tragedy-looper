@@ -11,13 +11,15 @@ type GameController struct {
 	logging *zap.Logger
 	state   *models.GameState
 	script  *models.Script
+	clit    *CLI
 }
 
-func NewGameController(logger *zap.Logger, script *models.Script) *GameController {
+func NewGameController(logger *zap.Logger, clit *CLI, script *models.Script) *GameController {
 	return &GameController{
 		state:   models.NewGameState(logger),
 		script:  script,
 		logging: logger,
+		clit:    clit,
 	}
 }
 

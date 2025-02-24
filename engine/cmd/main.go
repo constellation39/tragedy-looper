@@ -31,6 +31,7 @@ func main() {
 		zap.String("scenario", "FirstSteps1"),
 	)
 
+	CLI := controllers.NewCLI(logging)
 	gameController := controllers.NewGameController(logging, firstSteps1)
 	logging.Debug("Game controller initialized")
 
