@@ -11,15 +11,13 @@ type GameController struct {
 	logging *zap.Logger
 	state   *models.GameState
 	script  *models.Script
-	clit    *CLI
 }
 
-func NewGameController(logger *zap.Logger, clit *CLI, script *models.Script) *GameController {
+func NewGameController(logger *zap.Logger, script *models.Script) *GameController {
 	return &GameController{
 		state:   models.NewGameState(logger),
 		script:  script,
 		logging: logger,
-		clit:    clit,
 	}
 }
 
@@ -58,7 +56,7 @@ func (gc *GameController) setupGame() error {
 	// 设置脚本到 state
 	gc.state.Script = gc.script
 
-	gc.logging.Debug("Setup Mastermind")
+	gc.logging.Debug("Setup MastermindCLI")
 	gc.state.Mastermind = models.NewMastermind()
 
 	gc.logging.Debug("Setup Protagonists")
@@ -222,8 +220,8 @@ func (gc *GameController) enterFinalGuess() error {
 		gc.logging.Debug("Protagonists win because the guess is correct")
 		gc.state.WinnerType = "Protagonists"
 	} else {
-		gc.logging.Debug("Mastermind wins because the final guess is wrong")
-		gc.state.WinnerType = "Mastermind"
+		gc.logging.Debug("MastermindCLI wins because the final guess is wrong")
+		gc.state.WinnerType = "MastermindCLI"
 	}
 
 	return nil
@@ -425,9 +423,9 @@ func (gc *GameController) handleDayStart() error {
 
 // handleMastermindAction Mastermind放置行动卡
 func (gc *GameController) handleMastermindAction() error {
-	gc.logging.Debug("Mastermind placing action cards...")
-	// 来源: 知识库中提到 "Mastermind plays 3 action cards face down"
-	gc.logging.Debug("Mastermind must place exactly 3 cards face down")
+	gc.logging.Debug("MastermindCLI placing action cards...")
+	// 来源: 知识库中提到 "MastermindCLI plays 3 action cards face down"
+	gc.logging.Debug("MastermindCLI must place exactly 3 cards face down")
 	err := gc.state.Mastermind.PlaceActionCards(gc.state)
 	if err != nil {
 		return err
@@ -439,7 +437,7 @@ func (gc *GameController) handleMastermindAction() error {
 func (gc *GameController) handleProtagonistsAction() error {
 	gc.logging.Debug("Protagonists placing action cards...")
 	// 来源: 知识库中提到 "Protagonists play one card each face down"
-	gc.logging.Debug("Each Protagonist must place exactly 1 card face down")
+	gc.logging.Debug("Each ProtagonistCLI must place exactly 1 card face down")
 	return gc.state.Protagonists.PlaceActionCards(gc.state)
 }
 

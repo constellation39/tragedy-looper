@@ -32,6 +32,10 @@ func main() {
 	)
 
 	CLI := controllers.NewCLI(logging)
+
+	controllers.SetMastermindCLI(CLI)
+	controllers.SetProtagonistCLI(CLI)
+
 	gameController := controllers.NewGameController(logging, firstSteps1)
 	logging.Debug("Game controller initialized")
 
