@@ -19,11 +19,11 @@ type Location struct {
 	Characters   map[CharacterName]*Character // 当前在此位置的角色
 
 	// 相邻位置关系
-	Left     *Location // 左侧位置
-	Right    *Location // 右侧位置
-	Top      *Location // 上方位置
-	Bottom   *Location // 下方位置
-	Diagonal *Location // 斜向位置
+	left     *Location // 左侧位置
+	right    *Location // 右侧位置
+	top      *Location // 上方位置
+	bottom   *Location // 下方位置
+	diagonal *Location // 斜向位置
 }
 
 func (l *Location) Intrigue() int {
@@ -79,38 +79,38 @@ func (l *Location) getNextLocation(movementDirection MovementDirection) (*Locati
 
 // getHorizontalLocation handles horizontal movement logic
 func (l *Location) getHorizontalLocation() (*Location, error) {
-	if l.Left == nil && l.Right == nil {
+	if l.left == nil && l.right == nil {
 		return nil, fmt.Errorf("invalid map definition: no horizontal movement possible")
 	}
-	if l.Left != nil && l.Right != nil {
+	if l.left != nil && l.right != nil {
 		return nil, fmt.Errorf("invalid map definition: multiple horizontal paths")
 	}
 
-	if l.Left != nil {
-		return l.Left, nil
+	if l.left != nil {
+		return l.left, nil
 	}
-	return l.Right, nil
+	return l.right, nil
 }
 
 // getVerticalLocation handles vertical movement logic
 func (l *Location) getVerticalLocation() (*Location, error) {
-	if l.Top == nil && l.Bottom == nil {
+	if l.top == nil && l.bottom == nil {
 		return nil, fmt.Errorf("invalid map definition: no vertical movement possible")
 	}
-	if l.Top != nil && l.Bottom != nil {
+	if l.top != nil && l.bottom != nil {
 		return nil, fmt.Errorf("invalid map definition: multiple vertical paths")
 	}
 
-	if l.Top != nil {
-		return l.Top, nil
+	if l.top != nil {
+		return l.top, nil
 	}
-	return l.Bottom, nil
+	return l.bottom, nil
 }
 
 // getDiagonalLocation handles diagonal movement logic
 func (l *Location) getDiagonalLocation() (*Location, error) {
-	if l.Diagonal == nil {
+	if l.diagonal == nil {
 		return nil, fmt.Errorf("invalid map definition: no diagonal movement possible")
 	}
-	return l.Diagonal, nil
+	return l.diagonal, nil
 }

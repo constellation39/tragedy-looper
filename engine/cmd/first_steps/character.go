@@ -16,7 +16,7 @@ func NewBoyStudent(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "男学生",
+		Name:                "Boy Student",
 		StartLocation:       models.LocationSchool,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -38,7 +38,7 @@ func NewGirlStudent(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "女学生",
+		Name:                "Girl Student",
 		StartLocation:       models.LocationSchool,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -60,7 +60,7 @@ func NewRichMansDaughter(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "大小姐",
+		Name:                "Rich Man's Daughter",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -82,7 +82,7 @@ func NewClassRep(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "班长",
+		Name:                "Class Rep",
 		StartLocation:       models.LocationSchool,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -104,7 +104,7 @@ func NewMysteryBoy(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "神秘少年",
+		Name:                "Mystery Boy",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -134,7 +134,7 @@ func NewShrineMaiden(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "巫女",
+		Name:                "Shrine Maiden",
 		StartLocation:       models.LocationShrine,
 		GoodwillLimit:       6,
 		ParanoiaLimit:       3,
@@ -164,7 +164,7 @@ func NewAlien(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "外星人",
+		Name:                "Alien",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       6,
 		ParanoiaLimit:       3,
@@ -194,7 +194,7 @@ func NewGodly(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "神明",
+		Name:                "Godly",
 		StartLocation:       models.LocationShrine,
 		GoodwillLimit:       6,
 		ParanoiaLimit:       3,
@@ -224,7 +224,7 @@ func NewPoliceOfficer(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "警察",
+		Name:                "Police Officer",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       6,
 		ParanoiaLimit:       3,
@@ -246,7 +246,7 @@ func NewOfficeWorker(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "上班族",
+		Name:                "Office Worker",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -268,7 +268,7 @@ func NewInformer(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "告密者",
+		Name:                "Informer",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       6,
 		ParanoiaLimit:       3,
@@ -298,7 +298,7 @@ func NewPopIdol(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "偶像",
+		Name:                "Pop Idol",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       5,
 		ParanoiaLimit:       3,
@@ -328,7 +328,7 @@ func NewJournalist(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "记者",
+		Name:                "Journalist",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -350,7 +350,7 @@ func NewBoss(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "老板",
+		Name:                "Boss",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       6,
 		ParanoiaLimit:       3,
@@ -380,7 +380,7 @@ func NewDoctor(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "医生",
+		Name:                "Doctor",
 		StartLocation:       models.LocationHospital,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -391,7 +391,7 @@ func NewDoctor(role *models.Role) *models.Character {
 // 16. 病人(Patient)
 func NewPatient(role *models.Role) *models.Character {
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "病人",
+		Name:                "Patient",
 		StartLocation:       models.LocationHospital,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       2,                                // 特殊的不安上限
@@ -413,7 +413,7 @@ func NewNurse(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "护士",
+		Name:                "Nurse",
 		StartLocation:       models.LocationHospital,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -435,7 +435,7 @@ func NewHenchman(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "手下",
+		Name:                "Henchman",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -457,7 +457,7 @@ func NewOutsider(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "局外人",
+		Name:                "Outsider",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,

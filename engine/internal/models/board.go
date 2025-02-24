@@ -51,21 +51,21 @@ func (board *Board) Reset() error {
 	board.logging.Debug("All locations have been initialized")
 
 	// 设置地图位置关系
-	hospital.Right = shrine
-	hospital.Bottom = city
-	hospital.Diagonal = school
+	hospital.right = shrine
+	hospital.bottom = city
+	hospital.diagonal = school
 
-	city.Right = school
-	city.Top = hospital
-	city.Diagonal = shrine
+	city.right = school
+	city.top = hospital
+	city.diagonal = shrine
 
-	school.Top = shrine
-	school.Left = city
-	school.Diagonal = hospital
+	school.top = shrine
+	school.left = city
+	school.diagonal = hospital
 
-	shrine.Right = hospital
-	shrine.Bottom = school
-	shrine.Diagonal = city
+	shrine.right = hospital
+	shrine.bottom = school
+	shrine.diagonal = city
 
 	board.logging.Debug("The location relationships have been set")
 
@@ -75,7 +75,8 @@ func (board *Board) Reset() error {
 	board.locations[LocationSchool] = school
 	board.locations[LocationShrine] = shrine
 
-	board.logging.Debug("The locations were added to the game board mapping", zap.Reflect("hospital", hospital),
+	board.logging.Debug("The locations were added to the game board mapping",
+		zap.Reflect("hospital", hospital),
 		zap.Reflect("city", city),
 		zap.Reflect("school", school),
 		zap.Reflect("shrine", shrine))
@@ -95,11 +96,11 @@ func (board *Board) Reset() error {
 
 // IsAdjacent 检查两个位置是否相邻
 func (l *Location) IsAdjacent(other *Location) bool {
-	return l.Left == other ||
-		l.Right == other ||
-		l.Top == other ||
-		l.Bottom == other ||
-		l.Diagonal == other
+	return l.left == other ||
+		l.right == other ||
+		l.top == other ||
+		l.bottom == other ||
+		l.diagonal == other
 }
 
 // ResolveActionCards 按照规则顺序处理所有行动卡

@@ -123,7 +123,7 @@ type MovementDirection string
 const (
 	HorizontalMovement MovementDirection = "Horizontal" // 左右移动
 	VerticalMovement   MovementDirection = "Vertical"   // 上下移动
-	DiagonalMovement   MovementDirection = "Diagonal"   // 斜向移动
+	DiagonalMovement   MovementDirection = "diagonal"   // 斜向移动
 )
 
 type MovementCard struct {
