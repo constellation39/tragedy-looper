@@ -10,19 +10,66 @@ import (
 	"tragedy-looper/engine/internal/models"
 )
 
+// UI 接口用于多种交互模式
+type UI interface {
+	Select(title string, options []string) (int, error)
+}
+
+// CLI 控制器现在支持多种输入模式
 type CLI struct {
 	logging     *zap.Logger
 	inputReader *bufio.Reader
 	cmdParser   *commands.CommandParser
+	ui          UI       // 新增UI接口
+	cachedCards []string // 缓存当前可用的卡片
 }
 
-// NewCLI 创建新的CLI控制器
+// NewCLI 创建新的CLI控制器（默认使用terminal UI）
 func NewCLI(logger *zap.Logger) *CLI {
 	return &CLI{
 		logging:     logger,
 		inputReader: bufio.NewReader(os.Stdin),
 		cmdParser:   commands.NewCommandParser(),
+		ui:          &TerminalUI{},
 	}
+}
+
+// 选择目标（角色/位置）
+func (cli *CLI) selectTarget(state *models.GameState) (models.TargetType, error) {
+	characters := make([]string, 0, len(state.Script.Characters))
+	locations := make([]string, 0, len(state.Board.Locations()))
+
+	for _, c := range state.Script.Characters {
+		characters = append(characters, fmt.Sprintf("char_%s", c.Name))
+	}
+	for _, loc := range state.Board.Locations() {
+		locations = append(locations, fmt.Sprintf("loc_%s", loc))
+	}
+
+	options := append([]string{"-- 角色 --"}, characters...)
+	options = append(options, "-- 位置 --")
+	options = append(options, locations...)
+
+	selectedIdx, err := cli.ui.Select("选择目标", options)
+	if err != nil {
+		return nil, err
+	}
+
+	if selectedIdx <= len(characters) {
+		return findCharacter(state, strings.TrimPrefix(options[selectedIdx], "char_")), nil
+	}
+	return findLocation(state, strings.TrimPrefix(options[selectedIdx], "loc_")), nil
+}
+
+// 格式化目标参数
+func (cli *CLI) formatTarget(target models.TargetType) string {
+	switch t := target.(type) {
+	case *models.Character:
+		return fmt.Sprintf("char_%s", t.Name)
+	case *models.Location:
+		return fmt.Sprintf("loc_%s", t)
+	}
+	return ""
 }
 
 func (cli *CLI) Init() {
@@ -47,8 +94,8 @@ func (cli *CLI) Init() {
 }
 
 func (cli *CLI) handleInput(gameState *models.GameState) {
-	//fmt.Printf("[%s]> ", cli.currentPhase)
 	for {
+		fmt.Printf("[命令输入] > ") // 添加输入提示符
 		input, err := cli.inputReader.ReadString('\n')
 		if err != nil {
 			cli.logging.Error("Failed to read input", zap.Error(err))
@@ -152,12 +199,37 @@ func findLocation(gameState *models.GameState, locationID string) models.TargetT
 
 // StartPlacementPhase 启动交互式卡牌放置阶段
 func (cli *CLI) StartPlacementPhase(player models.Player, state *models.GameState) error {
+	handCards := player.GetHandCards()
+
+	// 缓存当前可用卡牌
+	cli.cachedCards = make([]string, len(handCards))
+	for i, card := range handCards {
+		cli.cachedCards[i] = card.Id()
+	}
+
 	for {
-		cli.logging.Info(fmt.Sprintf("当前手牌：%v", player.GetHandCardIDs()))
-		input, _ := cli.inputReader.ReadString('\n')
-		cmd, err := cli.cmdParser.Parse(strings.TrimSpace(input))
+		// 显示选项式菜单
+		selectedIdx, err := cli.ui.Select("选择要放置的卡牌", cli.cachedCards)
 		if err != nil {
-			cli.logging.Error("解析命令失败", zap.Error(err))
+			cli.logging.Error("选择卡牌失败", zap.Error(err))
+			continue
+		}
+
+		// 显示目标选择（保留原有的命令模式）
+		target, err := cli.selectTarget(state)
+		if err != nil {
+			cli.logging.Error("选择目标失败", zap.Error(err))
+			continue
+		}
+
+		// 构造place命令
+		cmdStr := fmt.Sprintf("place %s %s",
+			cli.cachedCards[selectedIdx],
+			cli.formatTarget(target))
+
+		cmd, err := cli.cmdParser.Parse(cmdStr)
+		if err != nil {
+			cli.logging.Error("解析命令失败", zap.String("cmdStr", cmdStr), zap.Error(err))
 			continue
 		}
 

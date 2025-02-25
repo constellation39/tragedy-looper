@@ -16,7 +16,7 @@ func NewBoyStudent(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "Boy Student",
+		Name:                "BoyStudent",
 		StartLocation:       models.LocationSchool,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -38,7 +38,7 @@ func NewGirlStudent(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "Girl Student",
+		Name:                "GirlStudent",
 		StartLocation:       models.LocationSchool,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -60,7 +60,7 @@ func NewRichMansDaughter(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "Rich Man's Daughter",
+		Name:                "RichMansDaughter",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -82,7 +82,7 @@ func NewClassRep(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "Class Rep",
+		Name:                "ClassRep",
 		StartLocation:       models.LocationSchool,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -104,7 +104,7 @@ func NewMysteryBoy(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "Mystery Boy",
+		Name:                "MysteryBoy",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -134,7 +134,7 @@ func NewShrineMaiden(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "Shrine Maiden",
+		Name:                "ShrineMaiden",
 		StartLocation:       models.LocationShrine,
 		GoodwillLimit:       6,
 		ParanoiaLimit:       3,
@@ -224,7 +224,7 @@ func NewPoliceOfficer(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "Police Officer",
+		Name:                "PoliceOfficer",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       6,
 		ParanoiaLimit:       3,
@@ -246,7 +246,7 @@ func NewOfficeWorker(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "Office Worker",
+		Name:                "OfficeWorker",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       4,
 		ParanoiaLimit:       3,
@@ -298,7 +298,7 @@ func NewPopIdol(role *models.Role) *models.Character {
 	}
 
 	return models.NewCharacter(&models.CharacterData{
-		Name:                "Pop Idol",
+		Name:                "PopIdol",
 		StartLocation:       models.LocationCity,
 		GoodwillLimit:       5,
 		ParanoiaLimit:       3,

@@ -523,3 +523,12 @@ func (board *Board) ReturnAllCards(state *GameState) error {
 	board.logging.Debug("All cards have been successfully returned")
 	return nil
 }
+
+func (board *Board) Locations() []LocationType {
+	return []LocationType{
+		"LocationHospital",
+		"LocationCity",
+		"LocationSchool",
+		"LocationShrine",
+	}
+}
