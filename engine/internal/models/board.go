@@ -532,3 +532,38 @@ func (board *Board) Locations() []LocationType {
 		"LocationShrine",
 	}
 }
+
+func (board *Board) GetMastermindCards() (cards []Card) {
+	// 收集所有主谋相关卡牌
+	for _, card := range board.actionCards {
+		if _, ok := card.Owner().(*Mastermind); ok {
+			cards = append(cards, card)
+		}
+	}
+	return cards
+}
+
+func (board *Board) GetProtagonistsCards() (cards []Card) {
+	// 收集所有主角相关卡牌
+	for _, card := range board.actionCards {
+		if _, ok := card.Owner().(*Protagonist); ok {
+			cards = append(cards, card)
+		}
+	}
+	return cards
+}
+
+func (board *Board) GetProtagonistCards(protagonist *Protagonist) (cards []Card) {
+	// 收集该特定主角的卡牌
+	for _, card := range board.actionCards {
+		if p, ok := card.Owner().(*Protagonist); ok && p == protagonist {
+			cards = append(cards, card)
+		}
+	}
+	// 追加主角当前持有的卡牌
+	handCards := protagonist.GetHandCards()
+	for _, c := range handCards {
+		cards = append(cards, c)
+	}
+	return cards
+}

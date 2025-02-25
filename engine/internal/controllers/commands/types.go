@@ -31,7 +31,8 @@ type Command interface {
 
 // CommandContext 命令执行上下文
 type CommandContext struct {
-	IsLeader     bool
-	IsMastermind bool
-	GameState    *models.GameState
+	IsLeader      bool
+	IsMastermind  bool
+	GameState     *models.GameState
+	CurrentPlayer models.Player // 新增当前玩家字段
 }

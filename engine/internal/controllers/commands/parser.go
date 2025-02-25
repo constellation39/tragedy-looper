@@ -32,13 +32,11 @@ func (p *CommandParser) Parse(input string) (Command, error) {
 		if len(args) != 3 {
 			return nil, fmt.Errorf("usage: goodwill <character> <abilityID> <target>")
 		}
-		return &UseGoodwillCommand{
+		return &GoodwillCommand{
 			CharacterName: args[0],
 			AbilityID:     args[1],
 			Target:        args[2],
 		}, nil
-
-	// ... 其他命令解析
 
 	default:
 		return nil, fmt.Errorf("unknown command: %s", cmdType)

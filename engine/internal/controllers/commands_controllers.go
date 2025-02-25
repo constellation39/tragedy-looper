@@ -120,38 +120,6 @@ func (cli *CLI) handleInput(gameState *models.GameState) {
 	}
 }
 
-// PlaceCommand 实现卡牌放置命令
-type PlaceCommand struct {
-	CardID        string
-	Target        string
-	gameState     *models.GameState
-	currentPlayer models.Player
-}
-
-func (c *PlaceCommand) Type() commands.CommandType {
-	return commands.CmdPlaceCard
-}
-
-// Execute 执行卡牌放置命令
-func (c *PlaceCommand) Execute(ctx commands.CommandContext) error {
-	// 实现卡牌放置逻辑
-	card := findCard(c.currentPlayer, c.CardID)
-	if card == nil {
-		return fmt.Errorf("无效的卡牌ID")
-	}
-
-	target := findTarget(c.gameState, c.Target)
-	if target == nil {
-		return fmt.Errorf("无效的目标，正确格式：char_角色ID 或 loc_位置ID")
-	}
-
-	if err := c.gameState.Board.SetCard(target, card); err != nil {
-		return err
-	}
-
-	return c.currentPlayer.PlaceCards(card)
-}
-
 // findCard 根据卡牌ID查找玩家手牌中的卡牌
 func findCard(player models.Player, cardID string) models.Card {
 	for _, card := range player.GetHandCards() {
@@ -252,10 +220,14 @@ func (cli *CLI) StartPlacementPhase(player models.Player, state *models.GameStat
 		}
 
 		// 执行放置命令
-		if placeCmd, ok := cmd.(*PlaceCommand); ok {
-			placeCmd.gameState = state
-			placeCmd.currentPlayer = player
-			if err := placeCmd.Execute(commands.CommandContext{GameState: state}); err != nil {
+		if placeCmd, ok := cmd.(*commands.PlaceCardCommand); ok {
+			// 创建包含当前玩家的命令上下文
+			ctx := commands.CommandContext{
+				GameState:     state,
+				CurrentPlayer: player,
+			}
+			
+			if err := placeCmd.Execute(ctx); err != nil {
 				cli.logging.Error("执行放置命令失败", zap.Error(err))
 				continue
 			}
@@ -266,7 +238,7 @@ func (cli *CLI) StartPlacementPhase(player models.Player, state *models.GameStat
 			cli.cachedCards = append(cli.cachedCards[:selectedIdx], cli.cachedCards[selectedIdx+1:]...)
 			cli.logging.Info("放置卡牌成功", zap.String("卡牌ID", selectedCardID))
 		} else {
-			return fmt.Errorf("非法的放置命令")
+			return fmt.Errorf("非法的放置命令类型 %T", cmd)
 		}
 	}
 
@@ -277,7 +249,7 @@ func (cli *CLI) StartPlacementPhase(player models.Player, state *models.GameStat
 			return fmt.Errorf("需要精确放置3张卡牌，当前放置了%d张", placed)
 		}
 	case *models.Protagonist:
-		if placed := p.MaxCardsPerDay - len(p.HandCards); placed != 1 {
+		if placed := len(state.Board.GetProtagonistCards(p)); placed != maxSelections {
 			return fmt.Errorf("需要精确放置1张卡牌，当前放置了%d张", placed)
 		}
 	}
