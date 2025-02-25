@@ -29,7 +29,7 @@ func (cli *CLI) Init() {
 	cli.logging.Info("欢迎来到Tragedy Looper!")
 	cli.logging.Info("可用命令:")
 	cli.logging.Info("=== 卡牌操作 ===")
-	cli.logging.Info("- place <卡牌ID> <目标角色/位置>  放置行动卡")
+	cli.logging.Info("- place <卡牌ID> <char_角色ID|loc_位置ID>  放置行动卡")
 	cli.logging.Info("- resolve  结算所有已放置的卡牌")
 
 	cli.logging.Info("\n=== 能力操作 ===")
@@ -95,7 +95,7 @@ func (c *PlaceCommand) Execute(ctx commands.CommandContext) error {
 
 	target := findTarget(c.gameState, c.Target)
 	if target == nil {
-		return fmt.Errorf("无效的目标")
+		return fmt.Errorf("无效的目标，正确格式：char_角色ID 或 loc_位置ID")
 	}
 
 	if err := c.gameState.Board.SetCard(target, card); err != nil {
@@ -116,21 +116,38 @@ func findCard(player models.Player, cardID string) models.Card {
 }
 
 // findTarget 根据目标名称查找游戏中的目标（角色或位置）
-func findTarget(gameState *models.GameState, targetName string) models.TargetType {
-	// 先检查是否为角色
-	for _, character := range gameState.Script.Characters {
-		if character.Name == models.CharacterName(targetName) {
-			return character
+func findTarget(gameState *models.GameState, targetInput string) models.TargetType {
+	// 使用前缀区分目标类型
+	parts := strings.SplitN(targetInput, "_", 2)
+	if len(parts) != 2 {
+		return nil
+	}
+
+	switch parts[0] {
+	case "char":
+		// 查找角色
+		return findCharacter(gameState, parts[1])
+	case "loc":
+		// 查找位置
+		return findLocation(gameState, parts[1])
+	default:
+		return nil
+	}
+}
+
+// findCharacter 查找角色目标
+func findCharacter(gameState *models.GameState, characterName string) models.TargetType {
+	for _, c := range gameState.Script.Characters {
+		if c.Name == models.CharacterName(characterName) {
+			return c
 		}
 	}
-
-	// 再检查是否为位置
-	location := gameState.Board.GetLocation(models.LocationType(targetName))
-	if location != nil {
-		return location
-	}
-
 	return nil
+}
+
+// findLocation 查找位置目标
+func findLocation(gameState *models.GameState, locationID string) models.TargetType {
+	return gameState.Board.GetLocation(models.LocationType(locationID))
 }
 
 // StartPlacementPhase 启动交互式卡牌放置阶段

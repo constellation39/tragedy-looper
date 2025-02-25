@@ -35,7 +35,7 @@ func (pc *PlayerController) HandleMastermindActions(m *models.Mastermind) error 
 	if err := m.PlaceActionCards(pc.gameState); err != nil {
 		return err
 	}
-	
+
 	// 启动交互式卡牌放置阶段
 	return pc.cli.StartPlacementPhase(m, pc.gameState)
 }
@@ -46,7 +46,7 @@ func (pc *PlayerController) HandleProtagonistActions(protagonist *models.Protago
 	if err := protagonist.PlaceActionCards(pc.gameState); err != nil {
 		return err
 	}
-	
+
 	// 启动交互式卡牌放置阶段
 	return pc.cli.StartPlacementPhase(protagonist, pc.gameState)
 }
