@@ -199,50 +199,89 @@ func findLocation(gameState *models.GameState, locationID string) models.TargetT
 
 // StartPlacementPhase 启动交互式卡牌放置阶段
 func (cli *CLI) StartPlacementPhase(player models.Player, state *models.GameState) error {
-	handCards := player.GetHandCards()
-
-	// 缓存当前可用卡牌
-	cli.cachedCards = make([]string, len(handCards))
-	for i, card := range handCards {
-		cli.cachedCards[i] = card.Id()
+	// 根据玩家类型设置最大选择次数
+	var maxSelections int
+	switch player.(type) {
+	case *models.Mastermind:
+		maxSelections = 3
+	case *models.Protagonist:
+		maxSelections = 1
+	default:
+		return fmt.Errorf("未知的玩家类型")
 	}
 
-	for {
-		// 显示选项式菜单
+	handCards := player.GetHandCards()
+
+	// 缓存当前可用卡牌（实时更新）
+	cli.cachedCards = make([]string, 0, len(handCards))
+	for _, card := range handCards {
+		cli.cachedCards = append(cli.cachedCards, card.Id())
+	}
+
+	// 追踪已选次数
+	selectionsMade := 0
+	for selectionsMade < maxSelections {
+		if len(cli.cachedCards) == 0 {
+			return fmt.Errorf("没有可用卡牌了")
+		}
+
+		// 显示剩余选择次数
+		cli.logging.Info(fmt.Sprintf("剩余需要放置的卡牌数：%d/%d", maxSelections-selectionsMade, maxSelections))
+
+		// 选择卡牌
 		selectedIdx, err := cli.ui.Select("选择要放置的卡牌", cli.cachedCards)
 		if err != nil {
 			cli.logging.Error("选择卡牌失败", zap.Error(err))
 			continue
 		}
+		selectedCardID := cli.cachedCards[selectedIdx]
 
-		// 显示目标选择（保留原有的命令模式）
+		// 选择目标
 		target, err := cli.selectTarget(state)
 		if err != nil {
 			cli.logging.Error("选择目标失败", zap.Error(err))
 			continue
 		}
 
-		// 构造place命令
-		cmdStr := fmt.Sprintf("place %s %s",
-			cli.cachedCards[selectedIdx],
-			cli.formatTarget(target))
-
+		// 构造和验证命令
+		cmdStr := fmt.Sprintf("place %s %s", selectedCardID, cli.formatTarget(target))
 		cmd, err := cli.cmdParser.Parse(cmdStr)
 		if err != nil {
 			cli.logging.Error("解析命令失败", zap.String("cmdStr", cmdStr), zap.Error(err))
 			continue
 		}
 
+		// 执行放置命令
 		if placeCmd, ok := cmd.(*PlaceCommand); ok {
 			placeCmd.gameState = state
 			placeCmd.currentPlayer = player
 			if err := placeCmd.Execute(commands.CommandContext{GameState: state}); err != nil {
 				cli.logging.Error("执行放置命令失败", zap.Error(err))
-			} else {
-				break
+				continue
 			}
+
+			// 成功后操作
+			selectionsMade++
+			// 更新可用卡牌列表
+			cli.cachedCards = append(cli.cachedCards[:selectedIdx], cli.cachedCards[selectedIdx+1:]...)
+			cli.logging.Info("放置卡牌成功", zap.String("卡牌ID", selectedCardID))
+		} else {
+			return fmt.Errorf("非法的放置命令")
 		}
 	}
+
+	// 最终验证放置数量
+	switch p := player.(type) {
+	case *models.Mastermind:
+		if placed := len(state.Board.GetMastermindCards()); placed != maxSelections {
+			return fmt.Errorf("需要精确放置3张卡牌，当前放置了%d张", placed)
+		}
+	case *models.Protagonist:
+		if placed := p.MaxCardsPerDay - len(p.HandCards); placed != 1 {
+			return fmt.Errorf("需要精确放置1张卡牌，当前放置了%d张", placed)
+		}
+	}
+
 	return nil
 }
 

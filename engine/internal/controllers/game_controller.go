@@ -439,9 +439,9 @@ func (gc *GameController) handleMastermindAction() error {
 	}
 
 	// 验证已放置3张卡牌
-	//if placed := len(gc.state.Board.GetMastermindCards()); placed != 3 {
-	//	return fmt.Errorf("需要精确放置3张卡牌，当前放置了%d张", placed)
-	//}
+	if placed := len(gc.state.Board.GetMastermindCards()); placed != 3 {
+		return fmt.Errorf("需要精确放置3张卡牌，当前放置了%d张", placed)
+	}
 	return nil
 }
 
@@ -462,8 +462,8 @@ func (gc *GameController) handleProtagonistsAction() error {
 		}
 
 		// 验证每个主角只放置1张
-		if placed := len(p.HandCards); placed != p.MaxCardsPerDay-1 {
-			return fmt.Errorf("主角%s需要精确放置1张卡牌", p.ID)
+		if placed := p.MaxCardsPerDay - len(p.HandCards); placed != 1 {
+			return fmt.Errorf("主角%s需要精确放置1张卡牌，当前放置了%d张", p.ID, placed)
 		}
 	}
 	return nil

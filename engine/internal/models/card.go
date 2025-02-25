@@ -50,6 +50,9 @@ type CardState struct {
 	faceDown bool       // 是否面朝下
 	target   TargetType // 卡牌目标（角色或位置）
 	used     bool       // 是否已使用（用于每循环一次的卡牌）
+	isInHand    bool
+	isDiscarded bool
+	usedCount   int
 }
 
 // BaseCardData 包含卡牌的静态信息
@@ -58,6 +61,7 @@ type BaseCardData struct {
 	cardType    CardType // 卡牌类型
 	priority    int      // 优先级
 	oncePerLoop bool     // 是否为每循环一次的卡牌
+	maxUsagePerLoop int
 }
 
 // BaseCard 组合了静态数据和动态状态
@@ -346,4 +350,10 @@ func (c *ForbidGoodwillCard) IsValidTarget(target TargetType) bool {
 func (c *ForbidGoodwillCard) SetTarget(target TargetType) error {
 	c.state.target = target
 	return nil
+}
+
+func (c *BaseCard) IsPlayable() bool {
+	return c.state.isInHand &&
+		!c.state.isDiscarded &&
+		c.data.maxUsagePerLoop > c.state.usedCount
 }
