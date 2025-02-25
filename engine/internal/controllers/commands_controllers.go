@@ -73,6 +73,90 @@ func (cli *CLI) handleInput(gameState *models.GameState) {
 	}
 }
 
+// PlaceCommand 实现卡牌放置命令
+type PlaceCommand struct {
+	CardID        string
+	Target        string
+	gameState     *models.GameState
+	currentPlayer models.Player
+}
+
+func (c *PlaceCommand) Type() commands.CommandType {
+	return commands.CmdPlaceCard
+}
+
+// Execute 执行卡牌放置命令
+func (c *PlaceCommand) Execute(ctx commands.CommandContext) error {
+	// 实现卡牌放置逻辑
+	card := findCard(c.currentPlayer, c.CardID)
+	if card == nil {
+		return fmt.Errorf("无效的卡牌ID")
+	}
+
+	target := findTarget(c.gameState, c.Target)
+	if target == nil {
+		return fmt.Errorf("无效的目标")
+	}
+
+	if err := c.gameState.Board.SetCard(target, card); err != nil {
+		return err
+	}
+
+	return c.currentPlayer.PlaceCards(card)
+}
+
+// findCard 根据卡牌ID查找玩家手牌中的卡牌
+func findCard(player models.Player, cardID string) models.Card {
+	for _, card := range player.GetHandCards() {
+		if card.Id() == cardID {
+			return card
+		}
+	}
+	return nil
+}
+
+// findTarget 根据目标名称查找游戏中的目标（角色或位置）
+func findTarget(gameState *models.GameState, targetName string) models.TargetType {
+	// 先检查是否为角色
+	for _, character := range gameState.Script.Characters {
+		if character.Name == models.CharacterName(targetName) {
+			return character
+		}
+	}
+
+	// 再检查是否为位置
+	location := gameState.Board.GetLocation(models.LocationType(targetName))
+	if location != nil {
+		return location
+	}
+
+	return nil
+}
+
+// StartPlacementPhase 启动交互式卡牌放置阶段
+func (cli *CLI) StartPlacementPhase(player models.Player, state *models.GameState) error {
+	for {
+		cli.logging.Info(fmt.Sprintf("当前手牌：%v", player.GetHandCardIDs()))
+		input, _ := cli.inputReader.ReadString('\n')
+		cmd, err := cli.cmdParser.Parse(strings.TrimSpace(input))
+		if err != nil {
+			cli.logging.Error("解析命令失败", zap.Error(err))
+			continue
+		}
+
+		if placeCmd, ok := cmd.(*PlaceCommand); ok {
+			placeCmd.gameState = state
+			placeCmd.currentPlayer = player
+			if err := placeCmd.Execute(commands.CommandContext{GameState: state}); err != nil {
+				cli.logging.Error("执行放置命令失败", zap.Error(err))
+			} else {
+				break
+			}
+		}
+	}
+	return nil
+}
+
 func (cli *CLI) shouldAdvancePhase() bool {
 	// 根据当前阶段和游戏状态判断是否应该进入下一阶段
 	// 例如:所有玩家都已经放置了卡牌
