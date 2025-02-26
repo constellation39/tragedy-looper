@@ -30,7 +30,6 @@ type GameState struct {
 	TimingAbility     map[RoleAbilityTiming][]RoleAbility // 当前阶段可用的角色能力
 	Characters        []*Character                        // 游戏中的所有角色
 	RoleTypes         map[RoleType]*Character             // 角色身份对应的角色
-	Locations         map[LocationType]*Location          // 游戏中的所有地点
 	ActiveRoles       map[string]*RoleAbility             // 当前激活的角色能力
 	Incidents         []Incident
 }
@@ -56,9 +55,20 @@ func NewGameState(logging *zap.Logger) *GameState {
 		IncidentsOccurred: make(map[string]bool),
 		TimingAbility:     make(map[RoleAbilityTiming][]RoleAbility),
 		RoleTypes:         make(map[RoleType]*Character),
-		Locations:         make(map[LocationType]*Location),
 		ActiveRoles:       make(map[string]*RoleAbility),
 	}
+}
+func (gs *GameState) Character(characterName CharacterName) *Character {
+	for _, c := range gs.Characters {
+		if c.Name == characterName {
+			return c
+		}
+	}
+	return nil
+}
+
+func (gs *GameState) Location(locationType LocationType) *Location {
+	return gs.Board.GetLocation(locationType)
 }
 
 // PrintGameState 详细打印游戏状态信息

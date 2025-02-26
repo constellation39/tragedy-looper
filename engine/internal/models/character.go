@@ -89,15 +89,27 @@ func (c *Character) ToLocation(board *Board, movementDirection MovementDirection
 	nextLoc.Characters[c.Name] = c
 }
 
+type CharacterTag string
+
 // CharacterData 角色静态数据
 type CharacterData struct {
-	Name                CharacterName           // 角色名称
+	Name                CharacterName // 角色名称
+	Tags                []CharacterTag
 	StartLocation       LocationType            // 初始位置
 	ForbidMovement      []LocationType          // 禁止移动Id() string
 	Traits              []CharacterTrait        // 特征
 	GoodwillLimit       int                     // 好感度上限
 	ParanoiaLimit       int                     // 不安上限
 	GoodwillAbilityList []*CharacterAbilityData // 好感度能力
+}
+
+func (cd *CharacterData) ExistsTag(needTag CharacterTag) bool {
+	for _, tag := range cd.Tags {
+		if tag == needTag {
+			return true
+		}
+	}
+	return false
 }
 
 // CharacterState 角色动态状态

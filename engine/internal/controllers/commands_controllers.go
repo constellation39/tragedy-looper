@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go.uber.org/zap"
 	"os"
+	"strconv"
 	"strings"
 	"tragedy-looper/engine/internal/controllers/commands"
 	"tragedy-looper/engine/internal/models"
@@ -13,6 +14,7 @@ import (
 // UI 接口用于多种交互模式
 type UI interface {
 	Select(title string, options []string) (int, error)
+	MultiSelect(title string, options []string) ([]int, error) // 新增多选接口
 }
 
 // CLI 控制器现在支持多种输入模式
@@ -61,13 +63,107 @@ func (cli *CLI) selectTarget(state *models.GameState) (models.TargetType, error)
 	return findLocation(state, strings.TrimPrefix(options[selectedIdx], "loc_")), nil
 }
 
+// 新增多选目标方法
+func (cli *CLI) selectMultipleTargets(state *models.GameState, prompt string, filter func(models.TargetType) bool) ([]models.TargetType, error) {
+	var selectedTargets []models.TargetType
+	var availableOptions []string
+	var targetMap = make(map[int]models.TargetType)
+
+	// 准备可选目标列表
+	characters := make([]string, 0, len(state.Script.Characters))
+	locations := make([]string, 0, len(state.Board.Locations()))
+
+	// 处理角色选项
+	idx := 0
+	for _, c := range state.Script.Characters {
+		charTarget := findCharacter(state, string(c.Name))
+		if filter == nil || filter(charTarget) {
+			option := fmt.Sprintf("char_%s", c.Name)
+			characters = append(characters, option)
+			targetMap[idx] = charTarget
+			idx++
+		}
+	}
+
+	// 处理位置选项
+	for _, loc := range state.Board.Locations() {
+		locTarget := findLocation(state, string(loc))
+		if filter == nil || filter(locTarget) {
+			option := fmt.Sprintf("loc_%s", loc)
+			locations = append(locations, option)
+			targetMap[idx] = locTarget
+			idx++
+		}
+	}
+
+	// 合并选项列表
+	availableOptions = append(availableOptions, characters...)
+	availableOptions = append(availableOptions, locations...)
+	availableOptions = append(availableOptions, "完成选择") // 添加完成选项
+
+	// 处理循环选择
+	for {
+		if len(availableOptions) <= 1 { // 只剩"完成选择"时退出
+			break
+		}
+
+		// 显示已选择的目标
+		selectionPrompt := prompt
+		if len(selectedTargets) > 0 {
+			selectionPrompt += fmt.Sprintf("\n已选择: %v", formatSelectedTargets(selectedTargets))
+		}
+
+		selectedIdx, err := cli.ui.Select(selectionPrompt, availableOptions)
+		if err != nil {
+			return nil, err
+		}
+
+		// 检查是否完成选择
+		if selectedIdx == len(availableOptions)-1 { // "完成选择"选项
+			break
+		}
+
+		// 添加到已选列表
+		selectedTarget := targetMap[selectedIdx]
+		selectedTargets = append(selectedTargets, selectedTarget)
+
+		// 从可选列表中移除已选项
+		availableOptions = append(availableOptions[:selectedIdx], availableOptions[selectedIdx+1:]...)
+		for i := selectedIdx; i < len(targetMap)-1; i++ {
+			targetMap[i] = targetMap[i+1]
+		}
+		delete(targetMap, len(targetMap)-1)
+
+		// 询问是否继续选择
+		if len(availableOptions) <= 1 { // 只剩"完成选择"时自动退出
+			break
+		}
+	}
+
+	return selectedTargets, nil
+}
+
+// 格式化已选择的目标为字符串，用于显示
+func formatSelectedTargets(targets []models.TargetType) string {
+	var result []string
+	for _, target := range targets {
+		switch t := target.(type) {
+		case *models.Character:
+			result = append(result, string(t.Name))
+		case *models.Location:
+			result = append(result, string(t.LocationType))
+		}
+	}
+	return strings.Join(result, ", ")
+}
+
 // 格式化目标参数
 func (cli *CLI) formatTarget(target models.TargetType) string {
 	switch t := target.(type) {
 	case *models.Character:
 		return fmt.Sprintf("char_%s", t.Name)
 	case *models.Location:
-		return fmt.Sprintf("loc_%s", t)
+		return fmt.Sprintf("loc_%s", t.LocationType)
 	}
 	return ""
 }
@@ -118,6 +214,95 @@ func (cli *CLI) handleInput(gameState *models.GameState) {
 			continue
 		}
 	}
+}
+
+// 处理能力命令
+func (cli *CLI) handleAbilityCommand(cmd *commands.AbilityCommand, state *models.GameState) error {
+	// 获取角色和能力
+	character := state.Character(models.CharacterName(cmd.CharacterName))
+	if character == nil {
+		return fmt.Errorf("角色 %s 不存在", cmd.CharacterName)
+	}
+
+	abilityIdx, err := strconv.Atoi(cmd.AbilityID)
+	if err != nil || abilityIdx < 0 || abilityIdx >= len(character.GoodwillAbilityList) {
+		return fmt.Errorf("无效的能力ID: %s", cmd.AbilityID)
+	}
+
+	ability := character.GoodwillAbilityList[abilityIdx]
+
+	// 根据能力名称判断是否需要多选
+	switch ability.Name {
+	case "减少同位置恐慌角色1点不安": // 护士能力
+		// 筛选同位置的恐慌角色
+		filter := func(target models.TargetType) bool {
+			if char, ok := target.(*models.Character); ok {
+				return char.CurrentLocation == character.CurrentLocation &&
+					char.Paranoia() > 0
+			}
+			return false
+		}
+
+		targets, err := cli.selectMultipleTargets(state, "选择要减少不安的恐慌角色", filter)
+		if err != nil {
+			return err
+		}
+
+		// 应用效果
+		for _, target := range targets {
+			if char, ok := target.(*models.Character); ok {
+				newParanoia := char.Paranoia() - 1
+				if newParanoia < 0 {
+					newParanoia = 0
+				}
+				char.SetParanoia(newParanoia)
+				cli.logging.Info(fmt.Sprintf("减少了角色 %s 的不安", char.Name))
+			}
+		}
+
+	case "展示同位置角色的身份": // 巫女能力
+		// 筛选同位置的角色
+		filter := func(target models.TargetType) bool {
+			if char, ok := target.(*models.Character); ok {
+				return char.CurrentLocation == character.CurrentLocation &&
+					char.Name != character.Name // 排除自己
+			}
+			return false
+		}
+
+		target, err := cli.selectTarget(state)
+		if err != nil {
+			return err
+		}
+
+		if char, ok := target.(*models.Character); ok {
+			if char.Role() != nil {
+				cli.logging.Info(fmt.Sprintf("角色 %s 的身份是: %s", char.Name, char.Role().Type))
+			} else {
+				cli.logging.Info(fmt.Sprintf("角色 %s 没有特殊身份", char.Name))
+			}
+		}
+
+	// 其他需要多选的能力可以继续添加case
+
+	default:
+		// 默认单目标选择
+		target, err := cli.selectTarget(state)
+		if err != nil {
+			return err
+		}
+
+		// 创建带有目标的上下文
+		ctx := commands.AbilityContext{
+			GameState: state,
+			Target:    target,
+		}
+
+		// 执行能力效果
+		return ability.Effect(ctx)
+	}
+
+	return nil
 }
 
 // findCard 根据卡牌ID查找玩家手牌中的卡牌
