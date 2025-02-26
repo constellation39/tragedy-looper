@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"go.uber.org/zap"
 	"os"
-	"strconv"
 	"strings"
 	"tragedy-looper/engine/internal/controllers/commands"
 	"tragedy-looper/engine/internal/models"
@@ -157,287 +156,215 @@ func formatSelectedTargets(targets []models.TargetType) string {
 	return strings.Join(result, ", ")
 }
 
-// 格式化目标参数
-func (cli *CLI) formatTarget(target models.TargetType) string {
-	switch t := target.(type) {
-	case *models.Character:
-		return fmt.Sprintf("char_%s", t.Name)
-	case *models.Location:
-		return fmt.Sprintf("loc_%s", t.LocationType)
-	}
-	return ""
+// 辅助函数：查找角色
+func findCharacter(state *models.GameState, name string) *models.Character {
+	return state.Character(models.CharacterName(name))
 }
 
-func (cli *CLI) Init() {
-	cli.logging.Info("欢迎来到Tragedy Looper!")
-	cli.logging.Info("可用命令:")
-	cli.logging.Info("=== 卡牌操作 ===")
-	cli.logging.Info("- place <卡牌ID> <char_角色ID|loc_位置ID>  放置行动卡")
-	cli.logging.Info("- resolve  结算所有已放置的卡牌")
-
-	cli.logging.Info("\n=== 能力操作 ===")
-	cli.logging.Info("- ability <角色名> <能力ID> <目标>  使用角色能力")
-	cli.logging.Info("- goodwill <角色名> <能力ID> <目标>  使用好感度能力(仅领袖)")
-
-	cli.logging.Info("\n=== 信息查看 ===")
-	cli.logging.Info("- status [角色名]  查看状态")
-	cli.logging.Info("- cards  查看手牌")
-	cli.logging.Info("- board  查看场上情况")
-
-	cli.logging.Info("\n=== 其他 ===")
-	cli.logging.Info("- help  显示帮助")
-	cli.logging.Info("- exit/quit  退出游戏")
+// 辅助函数：查找位置
+func findLocation(state *models.GameState, locType string) *models.Location {
+	return state.Location(models.LocationType(locType))
 }
 
-// handleGoodwillCommand 处理好感度能力执行
-func (cli *CLI) handleGoodwillCommand(cmd *commands.GoodwillCommand, state *models.GameState, player models.Player) error {
-	// 验证是否是领袖
-	if _, isLeader := player.(*models.Protagonist); !isLeader {
-		return fmt.Errorf("只有领袖可以使用好感度能力")
+// 处理命令行输入
+func (cli *CLI) processInput(state *models.GameState) error {
+	fmt.Print("> ")
+	input, err := cli.inputReader.ReadString('\n')
+	if err != nil {
+		return err
 	}
 
-	// 获取角色和能力
-	character := state.Character(models.CharacterName(cmd.CharacterName))
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return nil
+	}
+
+	cmd, err := cli.cmdParser.Parse(input)
+	if err != nil {
+		fmt.Println("命令解析错误:", err)
+		return nil
+	}
+
+	switch c := cmd.(type) {
+	case *commands.ShowCommand:
+		return cli.handleShowCommand(c, state)
+	case *commands.MoveCommand:
+		return cli.handleMoveCommand(c, state)
+	case *commands.PlaceCardCommand:
+		return cli.handlePlaceCardCommand(c, state)
+	default:
+		fmt.Println("未知命令类型")
+	}
+	return nil
+}
+
+// 处理展示命令
+func (cli *CLI) handleShowCommand(cmd *commands.ShowCommand, state *models.GameState) error {
+	switch cmd.Target {
+	case "characters":
+		cli.showCharacters(state)
+	case "locations":
+		cli.showLocations(state)
+	case "board":
+		cli.showBoard(state)
+	case "cards":
+		cli.showCards(state)
+	case "info":
+		cli.showGameInfo(state)
+	default:
+		fmt.Printf("未知的展示目标: %s\n", cmd.Target)
+	}
+	return nil
+}
+
+// 处理移动命令
+func (cli *CLI) handleMoveCommand(cmd *commands.MoveCommand, state *models.GameState) error {
+	// 解析角色名
+	characterName := models.CharacterName(cmd.CharacterName)
+	character := state.Character(characterName)
 	if character == nil {
-		return fmt.Errorf("角色 %s 不存在", cmd.CharacterName)
+		return fmt.Errorf("找不到角色: %s", characterName)
 	}
 
-	abilityIdx, err := strconv.Atoi(cmd.AbilityID)
-	if err != nil || abilityIdx < 0 || abilityIdx >= len(character.GoodwillAbilityList) {
-		return fmt.Errorf("无效的能力ID: %s", cmd.AbilityID)
+	// 解析目标位置
+	targetLocation := models.LocationType(cmd.TargetLocation)
+	if state.Location(targetLocation) == nil {
+		return fmt.Errorf("找不到位置: %s", targetLocation)
 	}
 
-	ability := character.GoodwillAbilityList[abilityIdx]
+	// 执行移动
+	err := state.MoveCharacter(character, targetLocation)
+	if err != nil {
+		return err
+	}
 
-	// 根据能力类型处理
-	switch ability.Name {
-	case "减少同位置学生1点不安":
-		// 筛选同位置的学生角色
-		filter := func(target models.TargetType) bool {
-			if char, ok := target.(*models.Character); ok {
-				return char.CurrentLocation == character.CurrentLocation &&
-					char.ExistsTag("Student") &&
-					char.Paranoia() > 0
-			}
-			return false
+	fmt.Printf("角色 %s 已移动到 %s\n", characterName, targetLocation)
+	return nil
+}
+
+// 处理放置卡牌命令
+func (cli *CLI) handlePlaceCardCommand(cmd *commands.PlaceCardCommand, state *models.GameState) error {
+	// 查找目标玩家
+	var player *models.Player
+	for _, p := range state.Players {
+		if p.ID == cmd.PlayerID {
+			player = p
+			break
 		}
+	}
 
-		targets, err := cli.selectMultipleTargets(state, "选择要减少不安的学生", filter)
-		if err != nil {
+	if player == nil {
+		return fmt.Errorf("找不到玩家ID: %s", cmd.PlayerID)
+	}
+
+	// 选择目标
+	target, err := cli.selectTarget(state)
+	if err != nil {
+		return fmt.Errorf("选择目标失败: %v", err)
+	}
+
+	// 放置卡牌
+	err = player.PlaceCards(cmd.CardType, target)
+	if err != nil {
+		return fmt.Errorf("放置卡牌失败: %v", err)
+	}
+
+	fmt.Printf("玩家 %s 已在目标上放置了 %s 卡牌\n", player.ID, cmd.CardType)
+	return nil
+}
+
+// 展示角色信息
+func (cli *CLI) showCharacters(state *models.GameState) {
+	fmt.Println("=== 角色列表 ===")
+	for _, c := range state.Script.Characters {
+		character := state.Character(c.Name)
+		if character == nil {
+			continue
+		}
+		fmt.Printf("- %s (位置: %s)\n", c.Name, character.Location())
+		if character.Role() != nil {
+			fmt.Printf("  角色: %s\n", character.Role().RoleType())
+		}
+	}
+	fmt.Println("===============")
+}
+
+// 展示位置信息
+func (cli *CLI) showLocations(state *models.GameState) {
+	fmt.Println("=== 位置列表 ===")
+	for _, loc := range state.Board.Locations() {
+		location := state.Location(loc)
+		if location == nil {
+			continue
+		}
+		fmt.Printf("- %s (阴谋标记: %d)\n", loc, location.CurIntrigue)
+		if len(location.Characters) > 0 {
+			fmt.Print("  角色: ")
+			for name := range location.Characters {
+				fmt.Printf("%s ", name)
+			}
+			fmt.Println()
+		}
+	}
+	fmt.Println("===============")
+}
+
+// 展示游戏板
+func (cli *CLI) showBoard(state *models.GameState) {
+	// 简单实现，后续可以美化
+	fmt.Println("=== 游戏板 ===")
+	fmt.Printf("当前循环: %d, 当前日期: %d, 当前阶段: %s\n",
+		state.CurrentLoop, state.CurrentDay, state.CurrentPhase)
+
+	// 显示位置及角色
+	for _, loc := range state.Board.Locations() {
+		location := state.Location(loc)
+		if location == nil {
+			continue
+		}
+		fmt.Printf("[%s] 阴谋:%d\n", loc, location.CurIntrigue)
+		for name := range location.Characters {
+			fmt.Printf("  - %s\n", name)
+		}
+	}
+	fmt.Println("=============")
+}
+
+// 展示卡牌信息
+func (cli *CLI) showCards(state *models.GameState) {
+	fmt.Println("=== 可用卡牌 ===")
+	// 缓存卡牌选项
+	if cli.cachedCards == nil {
+		cli.cachedCards = []string{
+			"阴谋卡", "偏执卡", "善意卡",
+		}
+	}
+
+	for i, card := range cli.cachedCards {
+		fmt.Printf("%d: %s\n", i+1, card)
+	}
+	fmt.Println("===============")
+}
+
+// 展示游戏信息
+func (cli *CLI) showGameInfo(state *models.GameState) {
+	fmt.Println("=== 游戏信息 ===")
+	fmt.Printf("剧本: %s\n", state.Script.Title)
+	fmt.Printf("循环: %d/%d\n", state.CurrentLoop, state.Script.MaxLoops)
+	fmt.Printf("日期: %d\n", state.CurrentDay)
+	fmt.Printf("阶段: %s\n", state.CurrentPhase)
+	if state.IsGameOver {
+		fmt.Printf("游戏结束, 获胜方: %s\n", state.WinnerType)
+	}
+	fmt.Println("===============")
+}
+
+// 运行CLI
+func (cli *CLI) Run(state *models.GameState) error {
+	for !state.IsGameOver {
+		if err := cli.processInput(state); err != nil {
 			return err
 		}
-
-		for _, target := range targets {
-			if char, ok := target.(*models.Character); ok {
-				char.SetParanoia(char.Paranoia() - 1)
-				cli.logging.Info(fmt.Sprintf("减少了学生 %s 的不安", char.Name))
-			}
-		}
-
-	default:
-		target, err := cli.selectTarget(state)
-		if err != nil {
-			return err
-		}
-
-		// 创建执行上下文
-		ctx := commands.CommandContext{
-			GameState:     state,
-			CurrentPlayer: player,
-			IsLeader:      true,
-		}
-
-		// 执行能力效果
-		if err := ability.Effect(ctx.GameState); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (cli *CLI) handleInput(gameState *models.GameState) {
-	for {
-		fmt.Printf("[命令输入] > ") // 添加输入提示符
-		input, err := cli.inputReader.ReadString('\n')
-		if err != nil {
-			cli.logging.Error("Failed to read input", zap.Error(err))
-			continue
-		}
-
-		cmd, err := cli.cmdParser.Parse(strings.TrimSpace(input))
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			continue
-		}
-
-		// 执行命令
-		ctx := commands.CommandContext{
-			GameState: gameState,
-		}
-
-		if err := cmd.Execute(ctx); err != nil {
-			fmt.Printf("Error executing command: %v\n", err)
-			continue
-		}
-	}
-}
-
-// 处理能力命令
-
-// findCard 根据卡牌ID查找玩家手牌中的卡牌
-func findCard(player models.Player, cardID string) models.Card {
-	for _, card := range player.GetHandCards() {
-		if card.Id() == cardID {
-			return card
-		}
 	}
 	return nil
-}
-
-// findTarget 根据目标名称查找游戏中的目标（角色或位置）
-func findTarget(gameState *models.GameState, targetInput string) models.TargetType {
-	// 使用前缀区分目标类型
-	parts := strings.SplitN(targetInput, "_", 2)
-	if len(parts) != 2 {
-		return nil
-	}
-
-	switch parts[0] {
-	case "char":
-		// 查找角色
-		return findCharacter(gameState, parts[1])
-	case "loc":
-		// 查找位置
-		return findLocation(gameState, parts[1])
-	default:
-		return nil
-	}
-}
-
-// findCharacter 查找角色目标
-func findCharacter(gameState *models.GameState, characterName string) models.TargetType {
-	for _, c := range gameState.Script.Characters {
-		if c.Name == models.CharacterName(characterName) {
-			return c
-		}
-	}
-	return nil
-}
-
-// findLocation 查找位置目标
-func findLocation(gameState *models.GameState, locationID string) models.TargetType {
-	return gameState.Board.GetLocation(models.LocationType(locationID))
-}
-
-// StartPlacementPhase 启动交互式卡牌放置阶段
-func (cli *CLI) StartPlacementPhase(player models.Player, state *models.GameState) error {
-	// 根据玩家类型设置最大选择次数
-	var maxSelections int
-	switch player.(type) {
-	case *models.Mastermind:
-		maxSelections = 3
-	case *models.Protagonist:
-		maxSelections = 1
-	default:
-		return fmt.Errorf("未知的玩家类型")
-	}
-
-	handCards := player.GetHandCards()
-
-	// 缓存当前可用卡牌（实时更新）
-	cli.cachedCards = make([]string, 0, len(handCards))
-	for _, card := range handCards {
-		cli.cachedCards = append(cli.cachedCards, card.Id())
-	}
-
-	// 追踪已选次数
-	selectionsMade := 0
-	for selectionsMade < maxSelections {
-		if len(cli.cachedCards) == 0 {
-			cli.logging.Error("无法继续放置: 没有可用卡牌",
-				zap.String("阶段", "放置阶段"),
-				zap.String("玩家类型", fmt.Sprintf("%T", player)),
-				zap.Int("已选择次数", selectionsMade),
-				zap.Int("最大次数", maxSelections))
-			return fmt.Errorf("没有可用卡牌了")
-		}
-
-		// 显示剩余选择次数
-		cli.logging.Info(fmt.Sprintf("剩余需要放置的卡牌数：%d/%d", maxSelections-selectionsMade, maxSelections))
-
-		// 选择卡牌
-		selectedIdx, err := cli.ui.Select("选择要放置的卡牌", cli.cachedCards)
-		if err != nil {
-			cli.logging.Error("选择卡牌失败", zap.Error(err))
-			continue
-		}
-		selectedCardID := cli.cachedCards[selectedIdx]
-
-		// 选择目标
-		target, err := cli.selectTarget(state)
-		if err != nil {
-			cli.logging.Error("选择目标失败", zap.Error(err))
-			continue
-		}
-
-		// 构造和验证命令
-		cmdStr := fmt.Sprintf("place %s %s", selectedCardID, cli.formatTarget(target))
-		cmd, err := cli.cmdParser.Parse(cmdStr)
-		if err != nil {
-			cli.logging.Error("解析命令失败", zap.String("cmdStr", cmdStr), zap.Error(err))
-			continue
-		}
-
-		// 执行放置命令
-		switch cmd := cmd.(type) {
-		case *commands.GoodwillCommand:
-			if err := cli.handleGoodwillCommand(cmd, state, player); err != nil {
-				cli.logging.Error("执行好感度命令失败", zap.Error(err))
-			}
-		case *commands.PlaceCardCommand:
-			// 创建包含当前玩家的命令上下文
-			ctx := commands.CommandContext{
-				GameState:     state,
-				CurrentPlayer: player,
-			}
-
-			if err := cmd.Execute(ctx); err != nil {
-				cli.logging.Error("执行放置命令失败", zap.Error(err))
-				continue
-			}
-
-			// 成功后操作
-			selectionsMade++
-			// 更新可用卡牌列表
-			cli.cachedCards = append(cli.cachedCards[:selectedIdx], cli.cachedCards[selectedIdx+1:]...)
-			cli.logging.Info("放置卡牌成功", zap.String("卡牌ID", selectedCardID))
-		} else {
-			return fmt.Errorf("非法的放置命令类型 %T", cmd)
-		}
-	}
-
-	// 最终验证放置数量
-	switch p := player.(type) {
-	case *models.Mastermind:
-		if placed := len(state.Board.GetMastermindCards()); placed != maxSelections {
-			return fmt.Errorf("需要精确放置3张卡牌，当前放置了%d张", placed)
-		}
-	case *models.Protagonist:
-		if placed := len(state.Board.GetProtagonistCards(p)); placed != maxSelections {
-			return fmt.Errorf("需要精确放置1张卡牌，当前放置了%d张", placed)
-		}
-	}
-
-	return nil
-}
-
-func (cli *CLI) shouldAdvancePhase() bool {
-	// 根据当前阶段和游戏状态判断是否应该进入下一阶段
-	// 例如:所有玩家都已经放置了卡牌
-	return false
-}
-
-func (cli *CLI) advanceToNextPhase() {
-
 }

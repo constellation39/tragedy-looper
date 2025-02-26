@@ -28,5 +28,31 @@ func (t *TerminalUI) Select(title string, options []string) (int, error) {
 	return -1, fmt.Errorf("invalid selection")
 }
 
+// MultiSelect 实现多选功能
+func (t *TerminalUI) MultiSelect(title string, options []string) ([]int, error) {
+	prompt := pterm.DefaultInteractiveMultiselect
+	prompt.DefaultText = title
+	prompt.Options = options
+	prompt.MaxHeight = 10
+
+	results, err := prompt.Show()
+	if err != nil {
+		return nil, err
+	}
+
+	// 找出选中项的索引
+	var selectedIndices []int
+	for _, result := range results {
+		for i, opt := range options {
+			if opt == result {
+				selectedIndices = append(selectedIndices, i)
+				break
+			}
+		}
+	}
+
+	return selectedIndices, nil
+}
+
 // WebUI 保留空结构以便未来扩展
 type WebUI struct{}

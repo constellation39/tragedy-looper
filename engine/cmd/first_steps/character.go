@@ -41,7 +41,14 @@ func NewBoyStudent(role *models.Role) *models.Character {
 
 // 2. 女学生(Girl Student)
 func NewGirlStudent(role *models.Role) *models.Character {
-	abilities := []*models.CharacterAbilityData{
+	character := models.NewCharacter(&models.CharacterData{
+		Name:          "GirlStudent",
+		StartLocation: models.LocationSchool,
+		GoodwillLimit: 4,
+		ParanoiaLimit: 3,
+	}, role)
+
+	character.GoodwillAbilityList = []*models.CharacterAbilityData{
 		{
 			Name:         "减少同位置学生1点不安",
 			Cost:         2,
@@ -52,7 +59,7 @@ func NewGirlStudent(role *models.Role) *models.Character {
 				for _, char := range location.Characters {
 					if char != character && char.Paranoia() > 0 {
 						char.SetParanoia(char.Paranoia() - 1)
-						state.Logging.Info(fmt.Sprintf("护士减少了 %s 1点不安", char.Name))
+						fmt.Printf("护士减少了 %s 1点不安\n", char.Name)
 					}
 				}
 				return nil
@@ -60,13 +67,7 @@ func NewGirlStudent(role *models.Role) *models.Character {
 		},
 	}
 
-	return models.NewCharacter(&models.CharacterData{
-		Name:                "GirlStudent",
-		StartLocation:       models.LocationSchool,
-		GoodwillLimit:       4,
-		ParanoiaLimit:       3,
-		GoodwillAbilityList: abilities,
-	}, role)
+	return character
 }
 
 // 3. 大小姐(Rich Man's Daughter)
