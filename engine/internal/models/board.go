@@ -560,10 +560,5 @@ func (board *Board) GetProtagonistCards(protagonist *Protagonist) (cards []Card)
 			cards = append(cards, card)
 		}
 	}
-	// 追加主角当前持有的卡牌
-	handCards := protagonist.GetHandCards()
-	for _, c := range handCards {
-		cards = append(cards, c)
-	}
 	return cards
 }

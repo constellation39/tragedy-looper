@@ -226,7 +226,7 @@ func (cli *CLI) StartPlacementPhase(player models.Player, state *models.GameStat
 				GameState:     state,
 				CurrentPlayer: player,
 			}
-			
+
 			if err := placeCmd.Execute(ctx); err != nil {
 				cli.logging.Error("执行放置命令失败", zap.Error(err))
 				continue

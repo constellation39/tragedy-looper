@@ -460,11 +460,6 @@ func (gc *GameController) handleProtagonistsAction() error {
 		if err := pc.HandleProtagonistActions(p); err != nil {
 			return fmt.Errorf("主角%s操作失败: %v", p.ID, err)
 		}
-
-		// 验证每个主角只放置1张
-		if placed := p.MaxCardsPerDay - len(p.HandCards); placed != 1 {
-			return fmt.Errorf("主角%s需要精确放置1张卡牌，当前放置了%d张", p.ID, placed)
-		}
 	}
 	return nil
 }
