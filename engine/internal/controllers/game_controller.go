@@ -151,14 +151,14 @@ func (gc *GameController) gameLoop() error {
 		}
 
 		// 返回所有卡牌
-		gc.logging.Debug("Return all cards", zap.Int("CurrentLoop", gc.state.CurrentLoop))
-		err = gc.state.Board.ReturnAllCards(gc.state)
-		if err != nil {
-			gc.logging.Error("Return cards failed",
-				zap.Int("CurrentLoop", gc.state.CurrentLoop),
-				zap.Error(err))
-			return err
-		}
+		//gc.logging.Debug("Return all cards", zap.Int("CurrentLoop", gc.state.CurrentLoop))
+		//err = gc.state.Board.ReturnAllCards(gc.state)
+		//if err != nil {
+		//	gc.logging.Error("Return cards failed",
+		//		zap.Int("CurrentLoop", gc.state.CurrentLoop),
+		//		zap.Error(err))
+		//	return err
+		//}
 
 		// 每日流程
 		gc.logging.Debug("Start daily phase", zap.Int("CurrentLoop", gc.state.CurrentLoop))
@@ -235,22 +235,22 @@ func (gc *GameController) prepareLoop() error {
 		zap.Int("Loop", gc.state.CurrentLoop+1))
 
 	// 来源: 知识库中的 "Preparing the Loop" 部分
-	gc.logging.Debug("1. Time Spiral Phase - Protagonists discussion time")
+	gc.logging.Debug("Time Spiral Phase - Protagonists discussion time")
 	// TODO: 实现时间螺旋阶段的具体逻辑
 
-	gc.logging.Debug("2. Returning characters to starting positions")
+	gc.logging.Debug("Returning characters to starting positions")
 	err := gc.state.Board.Reset()
 	if err != nil {
 		return err
 	}
 
-	gc.logging.Debug("3. Removing and replacing counters")
+	gc.logging.Debug("Removing and replacing counters")
 	err = gc.state.Board.ResetCounters()
 	if err != nil {
 		return err
 	}
 
-	gc.logging.Debug("4. Returning all action cards to hands")
+	gc.logging.Debug("Returning all action cards to hands")
 	err = gc.state.Board.ReturnAllCards(gc.state)
 	if err != nil {
 		return err

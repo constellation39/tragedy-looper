@@ -148,6 +148,12 @@ func (board *Board) ResolveActionCards(gs *GameState) error {
 		return err
 	}
 
+	err = board.ReturnAllCards(gs)
+	if err != nil {
+		board.logging.Error("Failed to return all cards", zap.Error(err))
+		return err
+	}
+
 	board.logging.Debug("All action cards have been successfully processed")
 	return nil
 }
