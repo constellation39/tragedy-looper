@@ -189,6 +189,73 @@ func (cli *CLI) Init() {
 	cli.logging.Info("- exit/quit  退出游戏")
 }
 
+// handleGoodwillCommand 处理好感度能力执行
+func (cli *CLI) handleGoodwillCommand(cmd *commands.GoodwillCommand, state *models.GameState, player models.Player) error {
+	// 验证是否是领袖
+	if _, isLeader := player.(*models.Protagonist); !isLeader {
+		return fmt.Errorf("只有领袖可以使用好感度能力")
+	}
+
+	// 获取角色和能力
+	character := state.Character(models.CharacterName(cmd.CharacterName))
+	if character == nil {
+		return fmt.Errorf("角色 %s 不存在", cmd.CharacterName)
+	}
+
+	abilityIdx, err := strconv.Atoi(cmd.AbilityID)
+	if err != nil || abilityIdx < 0 || abilityIdx >= len(character.GoodwillAbilityList) {
+		return fmt.Errorf("无效的能力ID: %s", cmd.AbilityID)
+	}
+
+	ability := character.GoodwillAbilityList[abilityIdx]
+
+	// 根据能力类型处理
+	switch ability.Name {
+	case "减少同位置学生1点不安":
+		// 筛选同位置的学生角色
+		filter := func(target models.TargetType) bool {
+			if char, ok := target.(*models.Character); ok {
+				return char.CurrentLocation == character.CurrentLocation &&
+					char.ExistsTag("Student") &&
+					char.Paranoia() > 0
+			}
+			return false
+		}
+
+		targets, err := cli.selectMultipleTargets(state, "选择要减少不安的学生", filter)
+		if err != nil {
+			return err
+		}
+
+		for _, target := range targets {
+			if char, ok := target.(*models.Character); ok {
+				char.SetParanoia(char.Paranoia() - 1)
+				cli.logging.Info(fmt.Sprintf("减少了学生 %s 的不安", char.Name))
+			}
+		}
+
+	default:
+		target, err := cli.selectTarget(state)
+		if err != nil {
+			return err
+		}
+
+		// 创建执行上下文
+		ctx := commands.CommandContext{
+			GameState:     state,
+			CurrentPlayer: player,
+			IsLeader:      true,
+		}
+
+		// 执行能力效果
+		if err := ability.Effect(ctx.GameState); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (cli *CLI) handleInput(gameState *models.GameState) {
 	for {
 		fmt.Printf("[命令输入] > ") // 添加输入提示符
@@ -217,93 +284,6 @@ func (cli *CLI) handleInput(gameState *models.GameState) {
 }
 
 // 处理能力命令
-func (cli *CLI) handleAbilityCommand(cmd *commands.AbilityCommand, state *models.GameState) error {
-	// 获取角色和能力
-	character := state.Character(models.CharacterName(cmd.CharacterName))
-	if character == nil {
-		return fmt.Errorf("角色 %s 不存在", cmd.CharacterName)
-	}
-
-	abilityIdx, err := strconv.Atoi(cmd.AbilityID)
-	if err != nil || abilityIdx < 0 || abilityIdx >= len(character.GoodwillAbilityList) {
-		return fmt.Errorf("无效的能力ID: %s", cmd.AbilityID)
-	}
-
-	ability := character.GoodwillAbilityList[abilityIdx]
-
-	// 根据能力名称判断是否需要多选
-	switch ability.Name {
-	case "减少同位置恐慌角色1点不安": // 护士能力
-		// 筛选同位置的恐慌角色
-		filter := func(target models.TargetType) bool {
-			if char, ok := target.(*models.Character); ok {
-				return char.CurrentLocation == character.CurrentLocation &&
-					char.Paranoia() > 0
-			}
-			return false
-		}
-
-		targets, err := cli.selectMultipleTargets(state, "选择要减少不安的恐慌角色", filter)
-		if err != nil {
-			return err
-		}
-
-		// 应用效果
-		for _, target := range targets {
-			if char, ok := target.(*models.Character); ok {
-				newParanoia := char.Paranoia() - 1
-				if newParanoia < 0 {
-					newParanoia = 0
-				}
-				char.SetParanoia(newParanoia)
-				cli.logging.Info(fmt.Sprintf("减少了角色 %s 的不安", char.Name))
-			}
-		}
-
-	case "展示同位置角色的身份": // 巫女能力
-		// 筛选同位置的角色
-		filter := func(target models.TargetType) bool {
-			if char, ok := target.(*models.Character); ok {
-				return char.CurrentLocation == character.CurrentLocation &&
-					char.Name != character.Name // 排除自己
-			}
-			return false
-		}
-
-		target, err := cli.selectTarget(state)
-		if err != nil {
-			return err
-		}
-
-		if char, ok := target.(*models.Character); ok {
-			if char.Role() != nil {
-				cli.logging.Info(fmt.Sprintf("角色 %s 的身份是: %s", char.Name, char.Role().Type))
-			} else {
-				cli.logging.Info(fmt.Sprintf("角色 %s 没有特殊身份", char.Name))
-			}
-		}
-
-	// 其他需要多选的能力可以继续添加case
-
-	default:
-		// 默认单目标选择
-		target, err := cli.selectTarget(state)
-		if err != nil {
-			return err
-		}
-
-		// 创建带有目标的上下文
-		ctx := commands.AbilityContext{
-			GameState: state,
-			Target:    target,
-		}
-
-		// 执行能力效果
-		return ability.Effect(ctx)
-	}
-
-	return nil
-}
 
 // findCard 根据卡牌ID查找玩家手牌中的卡牌
 func findCard(player models.Player, cardID string) models.Card {
@@ -375,6 +355,11 @@ func (cli *CLI) StartPlacementPhase(player models.Player, state *models.GameStat
 	selectionsMade := 0
 	for selectionsMade < maxSelections {
 		if len(cli.cachedCards) == 0 {
+			cli.logging.Error("无法继续放置: 没有可用卡牌",
+				zap.String("阶段", "放置阶段"),
+				zap.String("玩家类型", fmt.Sprintf("%T", player)),
+				zap.Int("已选择次数", selectionsMade),
+				zap.Int("最大次数", maxSelections))
 			return fmt.Errorf("没有可用卡牌了")
 		}
 
@@ -405,14 +390,19 @@ func (cli *CLI) StartPlacementPhase(player models.Player, state *models.GameStat
 		}
 
 		// 执行放置命令
-		if placeCmd, ok := cmd.(*commands.PlaceCardCommand); ok {
+		switch cmd := cmd.(type) {
+		case *commands.GoodwillCommand:
+			if err := cli.handleGoodwillCommand(cmd, state, player); err != nil {
+				cli.logging.Error("执行好感度命令失败", zap.Error(err))
+			}
+		case *commands.PlaceCardCommand:
 			// 创建包含当前玩家的命令上下文
 			ctx := commands.CommandContext{
 				GameState:     state,
 				CurrentPlayer: player,
 			}
 
-			if err := placeCmd.Execute(ctx); err != nil {
+			if err := cmd.Execute(ctx); err != nil {
 				cli.logging.Error("执行放置命令失败", zap.Error(err))
 				continue
 			}
