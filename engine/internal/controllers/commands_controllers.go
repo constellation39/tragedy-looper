@@ -10,18 +10,12 @@ import (
 	"tragedy-looper/engine/internal/models"
 )
 
-// UI 接口用于多种交互模式
-type UI interface {
-	Select(title string, options []string) (int, error)
-	MultiSelect(title string, options []string) ([]int, error) // 新增多选接口
-}
-
 // CLI 控制器现在支持多种输入模式
 type CLI struct {
 	logging     *zap.Logger
 	inputReader *bufio.Reader
 	cmdParser   *commands.CommandParser
-	ui          UI       // 新增UI接口
+	ui          UI       // UI接口
 	cachedCards []string // 缓存当前可用的卡片
 }
 
@@ -179,102 +173,63 @@ func (cli *CLI) processInput(state *models.GameState) error {
 		return nil
 	}
 
+	// 解析命令
 	cmd, err := cli.cmdParser.Parse(input)
 	if err != nil {
 		fmt.Println("命令解析错误:", err)
 		return nil
 	}
 
-	switch c := cmd.(type) {
-	case *commands.ShowCommand:
-		return cli.handleShowCommand(c, state)
-	case *commands.MoveCommand:
-		return cli.handleMoveCommand(c, state)
-	case *commands.PlaceCardCommand:
-		return cli.handlePlaceCardCommand(c, state)
-	default:
-		fmt.Println("未知命令类型")
+	// 创建命令上下文
+	ctx := commands.CommandContext{
+		GameState: state,
+		// 假设当前玩家可从游戏状态获取，或通过参数传入
+		CurrentPlayer: getCurrentPlayer(state),
+	}
+
+	// 执行命令
+	if err := cmd.Execute(ctx); err != nil {
+		fmt.Println("命令执行错误:", err)
+	}
+
+	return nil
+}
+
+// getCurrentPlayer 从游戏状态获取当前玩家
+// 此处为示例实现，需根据实际游戏状态逻辑进行调整
+func getCurrentPlayer(state *models.GameState) models.Player {
+	// 假设当前玩家可从游戏状态获取
+	if len(state.Players) > 0 {
+		return state.Players[state.CurrentPlayerIndex]
 	}
 	return nil
 }
 
-// 处理展示命令
-func (cli *CLI) handleShowCommand(cmd *commands.ShowCommand, state *models.GameState) error {
-	switch cmd.Target {
-	case "characters":
-		cli.showCharacters(state)
-	case "locations":
-		cli.showLocations(state)
-	case "board":
-		cli.showBoard(state)
-	case "cards":
-		cli.showCards(state)
-	case "info":
-		cli.showGameInfo(state)
-	default:
-		fmt.Printf("未知的展示目标: %s\n", cmd.Target)
+// 以下是原来各种展示函数的实现，现在可以直接使用command包中的命令
+
+// ShowCards 展示卡牌信息
+func (cli *CLI) ShowCards(state *models.GameState) {
+	cmd := commands.NewShowCardsCommand()
+	ctx := commands.CommandContext{
+		GameState:     state,
+		CurrentPlayer: getCurrentPlayer(state),
 	}
-	return nil
+	_ = cmd.Execute(ctx)
 }
 
-// 处理移动命令
-func (cli *CLI) handleMoveCommand(cmd *commands.MoveCommand, state *models.GameState) error {
-	// 解析角色名
-	characterName := models.CharacterName(cmd.CharacterName)
-	character := state.Character(characterName)
-	if character == nil {
-		return fmt.Errorf("找不到角色: %s", characterName)
+// ShowBoard 展示游戏板
+func (cli *CLI) ShowBoard(state *models.GameState) {
+	cmd := commands.NewShowBoardCommand()
+	ctx := commands.CommandContext{
+		GameState: state,
 	}
-
-	// 解析目标位置
-	targetLocation := models.LocationType(cmd.TargetLocation)
-	if state.Location(targetLocation) == nil {
-		return fmt.Errorf("找不到位置: %s", targetLocation)
-	}
-
-	// 执行移动
-	err := state.MoveCharacter(character, targetLocation)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("角色 %s 已移动到 %s\n", characterName, targetLocation)
-	return nil
+	_ = cmd.Execute(ctx)
 }
 
-// 处理放置卡牌命令
-func (cli *CLI) handlePlaceCardCommand(cmd *commands.PlaceCardCommand, state *models.GameState) error {
-	// 查找目标玩家
-	var player *models.Player
-	for _, p := range state.Players {
-		if p.ID == cmd.PlayerID {
-			player = p
-			break
-		}
-	}
-
-	if player == nil {
-		return fmt.Errorf("找不到玩家ID: %s", cmd.PlayerID)
-	}
-
-	// 选择目标
-	target, err := cli.selectTarget(state)
-	if err != nil {
-		return fmt.Errorf("选择目标失败: %v", err)
-	}
-
-	// 放置卡牌
-	err = player.PlaceCards(cmd.CardType, target)
-	if err != nil {
-		return fmt.Errorf("放置卡牌失败: %v", err)
-	}
-
-	fmt.Printf("玩家 %s 已在目标上放置了 %s 卡牌\n", player.ID, cmd.CardType)
-	return nil
-}
-
-// 展示角色信息
-func (cli *CLI) showCharacters(state *models.GameState) {
+// ShowCharacters 展示角色信息
+func (cli *CLI) ShowCharacters(state *models.GameState) {
+	// 这个功能现在可以使用status命令实现
+	// 但为了保持API兼容性，这里保留此方法
 	fmt.Println("=== 角色列表 ===")
 	for _, c := range state.Script.Characters {
 		character := state.Character(c.Name)
@@ -289,8 +244,10 @@ func (cli *CLI) showCharacters(state *models.GameState) {
 	fmt.Println("===============")
 }
 
-// 展示位置信息
-func (cli *CLI) showLocations(state *models.GameState) {
+// ShowLocations 展示位置信息
+func (cli *CLI) ShowLocations(state *models.GameState) {
+	// 这个功能现在可以使用status命令实现
+	// 但为了保持API兼容性，这里保留此方法
 	fmt.Println("=== 位置列表 ===")
 	for _, loc := range state.Board.Locations() {
 		location := state.Location(loc)
@@ -309,45 +266,8 @@ func (cli *CLI) showLocations(state *models.GameState) {
 	fmt.Println("===============")
 }
 
-// 展示游戏板
-func (cli *CLI) showBoard(state *models.GameState) {
-	// 简单实现，后续可以美化
-	fmt.Println("=== 游戏板 ===")
-	fmt.Printf("当前循环: %d, 当前日期: %d, 当前阶段: %s\n",
-		state.CurrentLoop, state.CurrentDay, state.CurrentPhase)
-
-	// 显示位置及角色
-	for _, loc := range state.Board.Locations() {
-		location := state.Location(loc)
-		if location == nil {
-			continue
-		}
-		fmt.Printf("[%s] 阴谋:%d\n", loc, location.CurIntrigue)
-		for name := range location.Characters {
-			fmt.Printf("  - %s\n", name)
-		}
-	}
-	fmt.Println("=============")
-}
-
-// 展示卡牌信息
-func (cli *CLI) showCards(state *models.GameState) {
-	fmt.Println("=== 可用卡牌 ===")
-	// 缓存卡牌选项
-	if cli.cachedCards == nil {
-		cli.cachedCards = []string{
-			"阴谋卡", "偏执卡", "善意卡",
-		}
-	}
-
-	for i, card := range cli.cachedCards {
-		fmt.Printf("%d: %s\n", i+1, card)
-	}
-	fmt.Println("===============")
-}
-
-// 展示游戏信息
-func (cli *CLI) showGameInfo(state *models.GameState) {
+// ShowGameInfo 展示游戏信息
+func (cli *CLI) ShowGameInfo(state *models.GameState) {
 	fmt.Println("=== 游戏信息 ===")
 	fmt.Printf("剧本: %s\n", state.Script.Title)
 	fmt.Printf("循环: %d/%d\n", state.CurrentLoop, state.Script.MaxLoops)
@@ -361,10 +281,17 @@ func (cli *CLI) showGameInfo(state *models.GameState) {
 
 // 运行CLI
 func (cli *CLI) Run(state *models.GameState) error {
+	fmt.Println("=== 悲剧循环游戏控制台 ===")
+	fmt.Println("输入 'help' 获取可用命令列表")
+	
 	for !state.IsGameOver {
 		if err := cli.processInput(state); err != nil {
 			return err
 		}
 	}
+	
+	fmt.Println("游戏结束!")
+	fmt.Printf("获胜方: %s\n", state.WinnerType)
+	
 	return nil
 }

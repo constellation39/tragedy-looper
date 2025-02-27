@@ -5,6 +5,12 @@ import (
 	"github.com/pterm/pterm"
 )
 
+// UI 接口用于多种交互模式
+type UI interface {
+	Select(title string, options []string) (int, error)
+	MultiSelect(title string, options []string) ([]int, error)
+}
+
 // TerminalUI 实现使用pterm的终端UI
 type TerminalUI struct{}
 
