@@ -1,4 +1,3 @@
-// engine/internal/controllers/commands/move_character.go
 package commands
 
 import (
@@ -34,7 +33,7 @@ func (c *MoveCharacterCommand) RequiredInputs() []string {
 }
 
 func (c *MoveCharacterCommand) Execute(ctx CommandContext) error {
-	gameState := ctx.GetGameState()
+	gameState := ctx.GameState
 	board := gameState.GetBoard()
 	character := board.GetCharacterByID(c.CharacterID)
 	location := board.GetLocationByID(c.LocationID)

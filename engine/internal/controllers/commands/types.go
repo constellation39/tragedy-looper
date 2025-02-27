@@ -48,6 +48,8 @@ const (
 	CmdHelp CommandType = "help"
 	// CmdQuit 退出游戏
 	CmdQuit CommandType = "quit"
+	// CmdMoveCharacter 移动角色
+	CmdMoveCharacter CommandType = "move"
 )
 
 // Command 命令接口

@@ -1,17 +1,22 @@
 // engine/internal/controllers/commands/show_help.go
-package commands  // Add this as the FIRST line
+package commands
 
-import "fmt"       // Add import statement
+import "fmt"
 
-// Keep existing Execute function
+// Command struct definition
+type ShowHelpCommand struct{}
+
+// Execute function with corrected implementation
 func (c *ShowHelpCommand) Execute(ctx CommandContext) error {
     fmt.Println("可用命令:")
     fmt.Println("  start - 开始新游戏")
     fmt.Println("  help - 显示帮助")
+    fmt.Println("  move <character> <location> - 移动角色")
+    fmt.Println("  pass - 跳过当前操作")
     return nil
 }
 
-// Add these missing method declarations to fulfill Command interface
-func (c *ShowHelpCommand) Type() CommandType { return "help" }
-func (c *ShowHelpCommand) Validate() error   { return nil }
-func (c *ShowHelpCommand) RequiredInputs() []string { return nil }
+// Interface method implementations
+func (c *ShowHelpCommand) Type() CommandType { return CmdHelp }
+func (c *ShowHelpCommand) Validate() error { return nil }
+func (c *ShowHelpCommand) RequiredInputs() []string { return []string{} }
