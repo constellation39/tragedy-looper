@@ -12,11 +12,12 @@ import (
 
 // CLI 控制器现在支持多种输入模式
 type CLI struct {
-	logging     *zap.Logger
-	inputReader *bufio.Reader
-	cmdParser   *commands.CommandParser
-	ui          UI       // UI接口
-	cachedCards []string // 缓存当前可用的卡片
+	logging         *zap.Logger
+	inputReader     *bufio.Reader
+	cmdParser       *commands.CommandParser
+	ui              UI       // UI接口
+	cachedCards     []string // 缓存当前可用的卡片
+	commandSequence []commands.Command // 新增命令序列存储
 }
 
 // NewCLI 创建新的CLI控制器（默认使用terminal UI）
@@ -180,19 +181,110 @@ func (cli *CLI) processInput(state *models.GameState) error {
 		return nil
 	}
 
+	// 新增命令序列处理逻辑
+	cli.commandSequence = append(cli.commandSequence, cmd)
+	
+	if !cli.isSequenceComplete() {
+		missing := cli.getMissingInputs()
+		if len(missing) > 0 {
+			fmt.Printf("需要继续输入: %s\n", strings.Join(missing, ", "))
+			return nil
+		}
+	}
+
 	// 创建命令上下文
 	ctx := commands.CommandContext{
-		GameState: state,
-		// 假设当前玩家可从游戏状态获取，或通过参数传入
+		GameState:     state,
 		CurrentPlayer: getCurrentPlayer(state),
 	}
 
-	// 执行命令
-	if err := cmd.Execute(ctx); err != nil {
+	// 执行完整序列
+	if err := cli.executeSequence(ctx); err != nil {
 		fmt.Println("命令执行错误:", err)
+	} else {
+		cli.clearSequence() // 执行成功后清空序列
 	}
 
 	return nil
+}
+
+// isSequenceComplete 检查命令序列是否完整可执行
+func (cli *CLI) isSequenceComplete() bool {
+	if len(cli.commandSequence) == 0 {
+		return false
+	}
+
+	cmd := cli.commandSequence[0]
+	switch cmd.Type() {
+	case commands.CmdPlaceCard, commands.CmdUseGoodwill:
+		return len(cli.commandSequence) >= 2
+	default:
+		return true
+	}
+}
+
+// getMissingInputs 获取命令序列中缺少的输入
+func (cli *CLI) getMissingInputs() []string {
+	if len(cli.commandSequence) == 0 {
+		return []string{"请输入一个命令"}
+	}
+
+	firstCmd := cli.commandSequence[0]
+	switch firstCmd.Type() {
+	case commands.CmdPlaceCard, commands.CmdUseGoodwill:
+		if len(cli.commandSequence) < 2 {
+			return []string{"需要选择目标(selectChar/selectLoc)"}
+		}
+	}
+	return nil
+}
+
+// executeSequence 执行当前命令序列
+func (cli *CLI) executeSequence(ctx commands.CommandContext) error {
+	if !cli.isSequenceComplete() {
+		return fmt.Errorf("命令序列不完整")
+	}
+
+	firstCmd := cli.commandSequence[0]
+	switch firstCmd.Type() {
+	case commands.CmdPlaceCard:
+		placeCmd := firstCmd.(*commands.PlaceCardCommand)
+		targetCmd := cli.commandSequence[1]
+
+		var target string
+		switch targetCmd.Type() {
+		case commands.CmdSelectChar:
+			target = "char_" + targetCmd.(*commands.SelectCharCommand).CharacterName
+		case commands.CmdSelectLocation:
+			target = "loc_" + targetCmd.(*commands.SelectLocationCommand).LocationType
+		}
+
+		placeCmd.SetTarget(target)
+		return placeCmd.Execute(ctx)
+
+	case commands.CmdUseGoodwill:
+		goodwillCmd := firstCmd.(*commands.GoodwillCommand)
+		targetCmd := cli.commandSequence[1]
+
+		var target string
+		switch targetCmd.Type() {
+		case commands.CmdSelectChar:
+			target = "char_" + targetCmd.(*commands.SelectCharCommand).CharacterName
+		case commands.CmdSelectLocation:
+			target = "loc_" + targetCmd.(*commands.SelectLocationCommand).LocationType
+		}
+
+		goodwillCmd.Target = target
+		return goodwillCmd.Execute(ctx)
+
+	default:
+		return firstCmd.Execute(ctx)
+	}
+}
+
+// clearSequence 清空命令序列
+func (cli *CLI) clearSequence() {
+	cli.commandSequence = nil
 }
 
 // getCurrentPlayer 从游戏状态获取当前玩家
