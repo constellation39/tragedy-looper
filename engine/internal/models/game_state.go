@@ -9,12 +9,13 @@ import (
 // state 管理整个游戏的状态
 
 type GameState struct {
-	logging      *zap.Logger
-	Script       *Script   // 当前剧本
-	CurrentPhase DayPhase  // 当前阶段
-	CurrentLoop  int       // 当前循环
-	CurrentDay   int       // 当前日期
-	TimeSpiral   time.Time // 时间螺旋阶段（TODO：具体实现时间螺旋的逻辑）
+	logging       *zap.Logger
+	Script        *Script   // 当前剧本
+	CurrentPhase  DayPhase  // 当前阶段
+	CurrentLoop   int       // 当前循环
+	CurrentDay    int       // 当前日期
+	CurrentPlayer Player    // 当前玩家
+	TimeSpiral    time.Time // 时间螺旋阶段（TODO：具体实现时间螺旋的逻辑）
 
 	IsGameOver   bool         // 游戏是否结束
 	WinnerType   string       // 获胜方类型

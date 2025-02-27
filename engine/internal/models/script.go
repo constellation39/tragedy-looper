@@ -1,7 +1,9 @@
 package models
 
-// Script 定义游戏脚本结构
+// Script 剧本结构
 type Script struct {
+	// Title 剧本标题
+	Title string
 	// 主要剧情
 	MainPlot *Plot
 	// 子剧情(Basic Tragedy Set 会有两个子剧情)

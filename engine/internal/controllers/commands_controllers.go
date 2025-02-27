@@ -15,8 +15,8 @@ type CLI struct {
 	logging         *zap.Logger
 	inputReader     *bufio.Reader
 	cmdParser       *commands.CommandParser
-	ui              UI       // UI接口
-	cachedCards     []string // 缓存当前可用的卡片
+	ui              UI                 // UI接口
+	cachedCards     []string           // 缓存当前可用的卡片
 	commandSequence []commands.Command // 新增命令序列存储
 }
 
@@ -183,7 +183,7 @@ func (cli *CLI) processInput(state *models.GameState) error {
 
 	// 新增命令序列处理逻辑
 	cli.commandSequence = append(cli.commandSequence, cmd)
-	
+
 	if !cli.isSequenceComplete() {
 		missing := cli.getMissingInputs()
 		if len(missing) > 0 {
@@ -290,11 +290,7 @@ func (cli *CLI) clearSequence() {
 // getCurrentPlayer 从游戏状态获取当前玩家
 // 此处为示例实现，需根据实际游戏状态逻辑进行调整
 func getCurrentPlayer(state *models.GameState) models.Player {
-	// 假设当前玩家可从游戏状态获取
-	if len(state.Players) > 0 {
-		return state.Players[state.CurrentPlayerIndex]
-	}
-	return nil
+	return state.CurrentPlayer
 }
 
 // 以下是原来各种展示函数的实现，现在可以直接使用command包中的命令
@@ -330,7 +326,7 @@ func (cli *CLI) ShowCharacters(state *models.GameState) {
 		}
 		fmt.Printf("- %s (位置: %s)\n", c.Name, character.Location())
 		if character.Role() != nil {
-			fmt.Printf("  角色: %s\n", character.Role().RoleType())
+			fmt.Printf("  角色: %s\n", character.Role().Type)
 		}
 	}
 	fmt.Println("===============")
