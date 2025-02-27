@@ -26,79 +26,94 @@ func (p *CommandParser) Parse(input string) (Command, error) {
 	cmdType := CommandType(parts[0])
 	args := parts[1:]
 
+	var cmd Command
+	var err error
+
 	switch cmdType {
 	case CmdPlaceCard:
 		if len(args) < 1 {
 			return nil, fmt.Errorf("usage: place <cardID>")
 		}
-		return NewPlaceCardCommand(args[0]), nil
+		cmd = NewPlaceCardCommand(args[0])
 
 	case CmdSelectChar:
 		if len(args) < 1 {
 			return nil, fmt.Errorf("usage: selectChar <characterName>")
 		}
-		return NewSelectCharCommand(args[0]), nil
+		cmd = NewSelectCharCommand(args[0])
 
 	case CmdSelectLocation:
 		if len(args) < 1 {
 			return nil, fmt.Errorf("usage: selectLoc <locationType>")
 		}
-		return NewSelectLocationCommand(args[0]), nil
+		cmd = NewSelectLocationCommand(args[0])
 
 	case CmdPassAction:
-		return NewPassActionCommand(), nil
+		cmd = NewPassActionCommand()
 
 	case CmdShowCards:
-		return NewShowCardsCommand(), nil
+		cmd = NewShowCardsCommand()
 
 	case CmdShowBoard:
-		return NewShowBoardCommand(), nil
+		cmd = NewShowBoardCommand()
 
 	case CmdStatus:
 		if len(args) < 1 {
 			return nil, fmt.Errorf("usage: status <target>")
 		}
-		return NewStatusCommand(args[0]), nil
+		cmd = NewStatusCommand(args[0])
 
 	case CmdViewRules:
-		return NewViewRulesCommand(), nil
+		cmd = NewViewRulesCommand()
 
 	case CmdViewIncidents:
-		return NewViewIncidentsCommand(), nil
+		cmd = NewViewIncidentsCommand()
 
 	case CmdViewHistory:
-		return NewViewHistoryCommand(), nil
+		cmd = NewViewHistoryCommand()
 
 	case CmdUseGoodwill:
 		if len(args) < 2 {
 			return nil, fmt.Errorf("usage: goodwill <characterName> <abilityID>")
 		}
-		return NewGoodwillCommand(args[0], args[1]), nil
+		cmd = NewGoodwillCommand(args[0], args[1])
 
 	case CmdFinalGuess:
-		return NewFinalGuessCommand(), nil
+		cmd = NewFinalGuessCommand()
 
 	case CmdNextPhase:
-		return NewNextPhaseCommand(), nil
+		cmd = NewNextPhaseCommand()
 
 	case CmdEndTurn:
-		return NewEndTurnCommand(), nil
+		cmd = NewEndTurnCommand()
 
 	case CmdMakeNote:
 		if len(args) < 1 {
 			return nil, fmt.Errorf("usage: note <content>")
 		}
-		return NewMakeNoteCommand(strings.Join(args, " ")), nil
+		cmd = NewMakeNoteCommand(strings.Join(args, " "))
 
 	case CmdHelp:
-		return NewHelpCommand(), nil
+		cmd = NewHelpCommand()
 
 	case CmdQuit:
-		return NewQuitCommand(), nil
+		cmd = NewQuitCommand()
 
 	default:
 		return nil, fmt.Errorf("unknown command: %s", cmdType)
 	}
+
+	// 验证命令参数
+	if err = cmd.Validate(); err != nil {
+		return nil, fmt.Errorf("命令参数无效: %v", err)
+	}
+
+	return cmd, nil
+}
+
+// GetRequiredInputs 获取命令所需的输入描述
+func (p *CommandParser) GetRequiredInputs(cmd Command) []string {
+	return cmd.RequiredInputs()
 }
 
 // AddToSequence 将命令添加到序列中
@@ -145,9 +160,34 @@ func (p *CommandParser) IsSequenceComplete() bool {
 	}
 }
 
+// GetMissingInputs 获取命令序列中缺少的输入
+func (p *CommandParser) GetMissingInputs() []string {
+	if len(p.commandSequence) == 0 {
+		return []string{"请输入一个命令"}
+	}
+
+	firstCmd := p.commandSequence[0]
+	switch firstCmd.Type() {
+	case CmdPlaceCard:
+		if len(p.commandSequence) < 2 {
+			return []string{"需要使用selectChar或selectLoc命令选择目标"}
+		}
+	case CmdUseGoodwill:
+		if len(p.commandSequence) < 2 {
+			return []string{"需要使用selectChar或selectLoc命令选择目标"}
+		}
+	}
+
+	return nil
+}
+
 // ExecuteSequence 执行当前命令序列
 func (p *CommandParser) ExecuteSequence(ctx CommandContext) error {
 	if !p.IsSequenceComplete() {
+		missingInputs := p.GetMissingInputs()
+		if len(missingInputs) > 0 {
+			return fmt.Errorf("命令序列不完整: %s", strings.Join(missingInputs, ", "))
+		}
 		return fmt.Errorf("命令序列不完整")
 	}
 

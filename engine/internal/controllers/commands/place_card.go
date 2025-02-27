@@ -29,6 +29,28 @@ func (c *PlaceCardCommand) SetTarget(target string) {
 	c.Target = target
 }
 
+// Validate 验证命令参数
+func (c *PlaceCardCommand) Validate() error {
+	if c.CardID == "" {
+		return fmt.Errorf("卡牌ID不能为空")
+	}
+	// Target可以为空，因为它可能由后续的selectChar或selectLoc命令设置
+	return nil
+}
+
+// RequiredInputs 返回命令需要的输入描述
+func (c *PlaceCardCommand) RequiredInputs() []string {
+	inputs := []string{
+		"卡牌ID: 需要放置的卡牌标识符",
+	}
+	
+	if c.Target == "" {
+		inputs = append(inputs, "目标: 需要使用selectChar或selectLoc命令来选择放置目标")
+	}
+	
+	return inputs
+}
+
 func (c *PlaceCardCommand) Execute(ctx CommandContext) error {
 	if ctx.CurrentPlayer == nil {
 		return fmt.Errorf("当前玩家信息缺失")

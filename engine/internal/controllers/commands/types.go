@@ -48,12 +48,23 @@ const (
 
 // Command 命令接口
 type Command interface {
+	// Type 返回命令类型
 	Type() CommandType
+	
+	// Validate 验证命令参数是否有效
+	// 返回错误表示命令无效，返回nil表示命令有效
+	Validate() error
+	
+	// RequiredInputs 返回命令需要的输入描述
+	// 返回一个描述各个输入项的字符串切片，用于提示用户
+	RequiredInputs() []string
+	
+	// Execute 执行命令
 	Execute(context CommandContext) error
 }
 
 // CommandContext 命令执行上下文
 type CommandContext struct {
 	GameState     *models.GameState
-	CurrentPlayer models.Player // 新增当前玩家字段
+	CurrentPlayer models.Player // 当前玩家字段
 }
