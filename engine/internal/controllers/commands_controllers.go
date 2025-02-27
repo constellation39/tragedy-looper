@@ -12,14 +12,14 @@ import (
 
 // CLI 控制器现在支持多种输入模式
 type CLI struct {
-	logging         *zap.Logger
-	inputReader     *bufio.Reader
-	cmdParser       *commands.CommandParser
-	ui              UI                 // UI接口
-	cachedCards     []string           // 缓存当前可用的卡片
-	commandSequence []commands.Command // 新增命令序列存储
-	availableScripts []string          // 可用剧本列表
-	selectedScript   string            // 当前选中剧本
+	logging          *zap.Logger
+	inputReader      *bufio.Reader
+	cmdParser        *commands.CommandParser
+	ui               UI                 // UI接口
+	cachedCards      []string           // 缓存当前可用的卡片
+	commandSequence  []commands.Command // 新增命令序列存储
+	availableScripts []string           // 可用剧本列表
+	selectedScript   string             // 当前选中剧本
 }
 
 // NewCLI 创建新的CLI控制器（默认使用terminal UI）
@@ -378,7 +378,7 @@ func (cli *CLI) ShowLocations(state *models.GameState) {
 		if location == nil {
 			continue
 		}
-		fmt.Printf("- %s (阴谋标记: %d)\n", loc, location.CurIntrigue)
+		fmt.Printf("- %s (阴谋标记: %d)\n", loc, location.Intrigue())
 		if len(location.Characters) > 0 {
 			fmt.Print("  角色: ")
 			for name := range location.Characters {
@@ -407,7 +407,7 @@ func (cli *CLI) ShowGameInfo(state *models.GameState) {
 func (cli *CLI) Run(state *models.GameState) error {
 	// 初始化可用剧本列表（应该从配置文件或目录加载）
 	cli.availableScripts = []string{"新手教学", "第一幕", "校园谜案"}
-	
+
 	// 显示启动界面
 	fmt.Println("=== 悲剧循环游戏控制台 ===")
 	fmt.Println("可用剧本:")
