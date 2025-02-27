@@ -9,19 +9,24 @@ import (
 // PlaceCardCommand 放置卡牌命令
 type PlaceCardCommand struct {
 	CardID string
-	Target string
+	Target string // 目标将由后续的selectChar或selectLoc命令设置
 }
 
 // NewPlaceCardCommand 创建新的放置卡牌命令
-func NewPlaceCardCommand(cardID, target string) *PlaceCardCommand {
+func NewPlaceCardCommand(cardID string) *PlaceCardCommand {
 	return &PlaceCardCommand{
 		CardID: cardID,
-		Target: target,
+		Target: "", // 初始为空，等待后续命令设置
 	}
 }
 
 func (c *PlaceCardCommand) Type() CommandType {
 	return CmdPlaceCard
+}
+
+// SetTarget 设置目标
+func (c *PlaceCardCommand) SetTarget(target string) {
+	c.Target = target
 }
 
 func (c *PlaceCardCommand) Execute(ctx CommandContext) error {
@@ -31,6 +36,10 @@ func (c *PlaceCardCommand) Execute(ctx CommandContext) error {
 
 	if ctx.GameState == nil {
 		return fmt.Errorf("游戏状态信息缺失")
+	}
+
+	if c.Target == "" {
+		return fmt.Errorf("请先选择目标")
 	}
 
 	// 查找卡牌
@@ -52,11 +61,17 @@ func (c *PlaceCardCommand) Execute(ctx CommandContext) error {
 		return fmt.Errorf("无效的目标: %s", c.Target)
 	}
 
-	// 执行卡牌放置
-	if err := ctx.GameState.Board.SetCard(target, card); err != nil {
+	// 检查目标是否有效
+	if !card.IsValidTarget(target) {
+		return fmt.Errorf("该目标不能放置此卡牌")
+	}
+
+	// 设置卡牌目标
+	if err := card.SetTarget(target); err != nil {
 		return err
 	}
 
+	// 执行卡牌放置
 	return ctx.CurrentPlayer.PlaceCards(card)
 }
 
@@ -70,14 +85,10 @@ func parseTarget(state *models.GameState, targetInput string) models.TargetType 
 	switch parts[0] {
 	case "char":
 		// 查找角色
-		for _, c := range state.Script.Characters {
-			if c.Name == models.CharacterName(parts[1]) {
-				return c
-			}
-		}
+		return state.Character(models.CharacterName(parts[1]))
 	case "loc":
 		// 查找位置
-		return state.Board.GetLocation(models.LocationType(parts[1]))
+		return state.Location(models.LocationType(parts[1]))
 	}
 
 	return nil

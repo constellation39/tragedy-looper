@@ -26,9 +26,9 @@ const (
 	// CmdUseGoodwill 使用好感度能力
 	CmdUseGoodwill CommandType = "goodwill"
 	// CmdSelectChar 选择角色作为操作目标
-	CmdSelectChar CommandType = "select"
+	CmdSelectChar CommandType = "selectChar"
 	// CmdSelectLocation 选择地点作为操作目标
-	CmdSelectLocation CommandType = "location"
+	CmdSelectLocation CommandType = "selectLoc"
 	// CmdFinalGuess 进行最终猜测（主角玩家）
 	CmdFinalGuess CommandType = "guess"
 
