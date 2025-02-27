@@ -33,20 +33,20 @@ func (c *MoveCharacterCommand) RequiredInputs() []string {
 }
 
 func (c *MoveCharacterCommand) Execute(ctx CommandContext) error {
-	gameState := ctx.GameState
-	board := gameState.GetBoard()
-	character := board.GetCharacterByID(c.CharacterID)
-	location := board.GetLocationByID(c.LocationID)
-	if character == nil {
-		return fmt.Errorf("character not found")
-	}
-	if location == nil {
-		return fmt.Errorf("location not found")
-	}
-	if !character.CanMoveTo(location) {
-		return fmt.Errorf("character cannot move to location")
-	}
-	character.SetLocationID(c.LocationID)
-	fmt.Printf("角色 %s 移动到 %s\n", character.GetName(), location.GetTitle())
+	//gameState := ctx.GameState
+	//board := gameState.GetBoard()
+	//character := board.GetCharacterByID(c.CharacterID)
+	//location := board.GetLocationByID(c.LocationID)
+	//if character == nil {
+	//	return fmt.Errorf("character not found")
+	//}
+	//if location == nil {
+	//	return fmt.Errorf("location not found")
+	//}
+	//if !character.CanMoveTo(location) {
+	//	return fmt.Errorf("character cannot move to location")
+	//}
+	//character.SetLocationID(c.LocationID)
+	//fmt.Printf("角色 %s 移动到 %s\n", character.GetName(), location.GetTitle())
 	return nil
 }

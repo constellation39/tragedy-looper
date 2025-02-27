@@ -101,7 +101,7 @@ func (p *CommandParser) Parse(input string) (Command, error) {
 		cmd = NewHelpCommand()
 
 	case CmdQuit:
-		cmd = NewQuitCommand()
+		cmd = NewQuitGameCommand()
 
 	default:
 		return nil, fmt.Errorf("unknown command: %s", cmdType)

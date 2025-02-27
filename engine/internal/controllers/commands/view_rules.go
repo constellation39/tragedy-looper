@@ -28,7 +28,7 @@ func (c *ViewRulesCommand) Execute(ctx CommandContext) error {
 	}
 
 	fmt.Println("剧本规则:")
-	fmt.Printf("剧本名称: %s\n", gameState.Script.Name)
+	fmt.Printf("剧本名称: %s\n", gameState.Script.Title)
 	fmt.Printf("最大循环数: %d\n", gameState.Script.MaxLoops)
 	fmt.Printf("每循环天数: %d\n", gameState.Script.DaysPerLoop)
 
