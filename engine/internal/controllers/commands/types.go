@@ -5,6 +5,8 @@ import "tragedy-looper/engine/internal/models"
 type CommandType string
 
 const (
+	// CmdSelectScript 选择剧本
+	CmdSelectScript CommandType = "selectScript"
 	// CmdStartGame 启动游戏
 	CmdStartGame CommandType = "start"
 	// CmdPlaceCard 放置卡牌到角色或地点

@@ -27,6 +27,11 @@ func (p *CommandParser) Parse(input string) (Command, error) {
 	var err error
 
 	switch cmdType {
+	case CmdSelectScript:
+		if len(args) < 1 {
+			return nil, fmt.Errorf("usage: selectScript <剧本名称>")
+		}
+		cmd = NewSelectScriptCommand(args[0])
 	case CmdStartGame:
 		cmd = NewStartGameCommand()
 	case CmdPlaceCard:

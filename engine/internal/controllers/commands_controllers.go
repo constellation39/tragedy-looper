@@ -18,6 +18,8 @@ type CLI struct {
 	ui              UI                 // UI接口
 	cachedCards     []string           // 缓存当前可用的卡片
 	commandSequence []commands.Command // 新增命令序列存储
+	availableScripts []string          // 可用剧本列表
+	selectedScript   string            // 当前选中剧本
 }
 
 // NewCLI 创建新的CLI控制器（默认使用terminal UI）
@@ -181,6 +183,13 @@ func (cli *CLI) processInput(state *models.GameState) error {
 		return nil
 	}
 
+	// 处理selectScript命令
+	if cmd.Type() == commands.CmdSelectScript {
+		selectCmd := cmd.(*commands.SelectScriptCommand)
+		cli.handleScriptSelection(selectCmd.ScriptName, state)
+		return nil
+	}
+
 	// 新增命令序列处理逻辑
 	cli.commandSequence = append(cli.commandSequence, cmd)
 
@@ -198,6 +207,12 @@ func (cli *CLI) processInput(state *models.GameState) error {
 		CurrentPlayer: getCurrentPlayer(state),
 	}
 
+	// 检查start命令时需先选择剧本
+	if cmd.Type() == commands.CmdStartGame && cli.selectedScript == "" {
+		fmt.Println("错误: 请先使用selectScript选择剧本")
+		return nil
+	}
+
 	// 执行完整序列
 	if err := cli.executeSequence(ctx); err != nil {
 		fmt.Println("命令执行错误:", err)
@@ -206,6 +221,27 @@ func (cli *CLI) processInput(state *models.GameState) error {
 	}
 
 	return nil
+}
+
+// 新增剧本选择处理逻辑
+func (cli *CLI) handleScriptSelection(name string, state *models.GameState) {
+	// 验证剧本是否存在于可用列表中
+	scriptFound := false
+	for _, script := range cli.availableScripts {
+		if script == name {
+			scriptFound = true
+			break
+		}
+	}
+
+	if !scriptFound {
+		fmt.Printf("错误: 剧本 [%s] 不存在，请选择有效的剧本\n", name)
+		return
+	}
+
+	// 这里应该根据name加载对应剧本（需扩展实际剧本加载逻辑）
+	cli.selectedScript = name
+	fmt.Printf("剧本 [%s] 已选择\n", name)
 }
 
 // isSequenceComplete 检查命令序列是否完整可执行
@@ -369,7 +405,16 @@ func (cli *CLI) ShowGameInfo(state *models.GameState) {
 
 // 运行CLI
 func (cli *CLI) Run(state *models.GameState) error {
+	// 初始化可用剧本列表（应该从配置文件或目录加载）
+	cli.availableScripts = []string{"新手教学", "第一幕", "校园谜案"}
+	
+	// 显示启动界面
 	fmt.Println("=== 悲剧循环游戏控制台 ===")
+	fmt.Println("可用剧本:")
+	for i, script := range cli.availableScripts {
+		fmt.Printf("%d. %s\n", i+1, script)
+	}
+	fmt.Println("使用 selectScript <剧本名称> 选择剧本")
 	fmt.Println("输入 'help' 获取可用命令列表")
 
 	for !state.IsGameOver {
