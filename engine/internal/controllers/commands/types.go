@@ -5,6 +5,8 @@ import "tragedy-looper/engine/internal/models"
 type CommandType string
 
 const (
+	// CmdStartGame 启动游戏
+	CmdStartGame CommandType = "start"
 	// CmdPlaceCard 放置卡牌到角色或地点
 	CmdPlaceCard CommandType = "place"
 	// CmdPassAction 跳过当前操作/不执行行动

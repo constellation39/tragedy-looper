@@ -30,6 +30,8 @@ func (p *CommandParser) Parse(input string) (Command, error) {
 	var err error
 
 	switch cmdType {
+	case CmdStartGame:
+		cmd = NewStartGameCommand()
 	case CmdPlaceCard:
 		if len(args) < 1 {
 			return nil, fmt.Errorf("usage: place <cardID>")
@@ -197,33 +199,33 @@ func (p *CommandParser) ExecuteSequence(ctx CommandContext) error {
 	case CmdPlaceCard:
 		placeCmd := firstCmd.(*PlaceCardCommand)
 		targetCmd := p.commandSequence[1]
-		
+
 		var target string
 		if targetCmd.Type() == CmdSelectChar {
 			target = "char_" + targetCmd.(*SelectCharCommand).CharacterName
 		} else {
 			target = "loc_" + targetCmd.(*SelectLocationCommand).LocationType
 		}
-		
+
 		// 设置目标并执行
 		placeCmd.SetTarget(target)
 		return placeCmd.Execute(ctx)
-		
+
 	case CmdUseGoodwill:
 		goodwillCmd := firstCmd.(*GoodwillCommand)
 		targetCmd := p.commandSequence[1]
-		
+
 		var target string
 		if targetCmd.Type() == CmdSelectChar {
 			target = "char_" + targetCmd.(*SelectCharCommand).CharacterName
 		} else {
 			target = "loc_" + targetCmd.(*SelectLocationCommand).LocationType
 		}
-		
+
 		// 设置目标并执行
 		goodwillCmd.Target = target
 		return goodwillCmd.Execute(ctx)
-		
+
 	default:
 		// 单命令直接执行
 		return firstCmd.Execute(ctx)
