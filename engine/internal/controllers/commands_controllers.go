@@ -283,15 +283,15 @@ func (cli *CLI) ShowGameInfo(state *models.GameState) {
 func (cli *CLI) Run(state *models.GameState) error {
 	fmt.Println("=== 悲剧循环游戏控制台 ===")
 	fmt.Println("输入 'help' 获取可用命令列表")
-	
+
 	for !state.IsGameOver {
 		if err := cli.processInput(state); err != nil {
 			return err
 		}
 	}
-	
+
 	fmt.Println("游戏结束!")
 	fmt.Printf("获胜方: %s\n", state.WinnerType)
-	
+
 	return nil
 }
