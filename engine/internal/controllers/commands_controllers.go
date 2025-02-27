@@ -17,7 +17,6 @@ type CLI struct {
 	cmdParser        *commands.CommandParser
 	ui               UI                 // UI接口
 	cachedCards      []string           // 缓存当前可用的卡片
-	commandSequence  []commands.Command // 新增命令序列存储
 	availableScripts []string           // 可用剧本列表
 	selectedScript   string             // 当前选中剧本
 }
@@ -34,109 +33,129 @@ func NewCLI(logger *zap.Logger) *CLI {
 
 // 选择目标（角色/位置）
 func (cli *CLI) selectTarget(state *models.GameState) (models.TargetType, error) {
-	characters := make([]string, 0, len(state.Script.Characters))
-	locations := make([]string, 0, len(state.Board.Locations()))
-
-	for _, c := range state.Script.Characters {
-		characters = append(characters, fmt.Sprintf("char_%s", c.Name))
-	}
-	for _, loc := range state.Board.Locations() {
-		locations = append(locations, fmt.Sprintf("loc_%s", loc))
-	}
-
-	options := append([]string{"-- 角色 --"}, characters...)
-	options = append(options, "-- 位置 --")
-	options = append(options, locations...)
-
-	selectedIdx, err := cli.ui.Select("选择目标", options)
+	// 第一步：选择目标类型
+	category, err := cli.ui.Select("选择目标类型", []string{"角色", "位置"})
 	if err != nil {
 		return nil, err
 	}
 
-	if selectedIdx <= len(characters) {
-		return findCharacter(state, strings.TrimPrefix(options[selectedIdx], "char_")), nil
+	// 第二步：展示对应类型的候选目标
+	var options []string
+	targetMap := make(map[int]models.TargetType)
+	
+	switch category {
+	case 0: // 角色
+		for i, c := range state.Script.Characters {
+			options = append(options, string(c.Name))
+			targetMap[i] = findCharacter(state, string(c.Name))
+		}
+	case 1: // 位置
+		for i, loc := range state.Board.Locations() {
+			options = append(options, string(loc))
+			targetMap[i] = findLocation(state, string(loc))
+		}
+	default:
+		return nil, fmt.Errorf("无效选择")
 	}
-	return findLocation(state, strings.TrimPrefix(options[selectedIdx], "loc_")), nil
+
+	// 添加返回上级选项
+	options = append(options, "返回上级菜单")
+	
+	selectedIdx, err := cli.ui.Select("选择目标 (输入序号)", options)
+	if err != nil {
+		return nil, err
+	}
+	
+	if selectedIdx >= len(options)-1 { // 选择了返回
+		return cli.selectTarget(state) // 递归调用重新选择类型
+	}
+	
+	return targetMap[selectedIdx], nil
+}
+
+// 新增角色目标选择方法
+func (cli *CLI) chooseCharacterTarget(state *models.GameState, filter func(models.TargetType) bool) (models.TargetType, error) {
+	var options []string
+	var targetMap = make(map[int]*models.Character)
+
+	validChars := 0
+	for _, c := range state.Script.Characters {
+		char := findCharacter(state, string(c.Name))
+		if filter == nil || filter(char) {
+			options = append(options, string(c.Name))
+			targetMap[validChars] = char
+			validChars++
+		}
+	}
+	options = append(options, "取消返回")
+
+	selectedIdx, err := cli.ui.Select("选择角色", options)
+	if err != nil || selectedIdx >= len(targetMap) {
+		return nil, err
+	}
+	return targetMap[selectedIdx], nil
+}
+
+// 新增位置目标选择方法 
+func (cli *CLI) chooseLocationTarget(state *models.GameState, filter func(models.TargetType) bool) (models.TargetType, error) {
+	var options []string
+	var targetMap = make(map[int]*models.Location)
+
+	validLocs := 0
+	for _, loc := range state.Board.Locations() {
+		location := findLocation(state, string(loc))
+		if filter == nil || filter(location) {
+			options = append(options, string(loc))
+			targetMap[validLocs] = location
+			validLocs++
+		}
+	}
+	options = append(options, "取消返回")
+
+	selectedIdx, err := cli.ui.Select("选择位置", options)
+	if err != nil || selectedIdx >= len(targetMap) {
+		return nil, err
+	}
+	return targetMap[selectedIdx], nil
 }
 
 // 新增多选目标方法
 func (cli *CLI) selectMultipleTargets(state *models.GameState, prompt string, filter func(models.TargetType) bool) ([]models.TargetType, error) {
 	var selectedTargets []models.TargetType
-	var availableOptions []string
-	var targetMap = make(map[int]models.TargetType)
 
-	// 准备可选目标列表
-	characters := make([]string, 0, len(state.Script.Characters))
-	locations := make([]string, 0, len(state.Board.Locations()))
-
-	// 处理角色选项
-	idx := 0
-	for _, c := range state.Script.Characters {
-		charTarget := findCharacter(state, string(c.Name))
-		if filter == nil || filter(charTarget) {
-			option := fmt.Sprintf("char_%s", c.Name)
-			characters = append(characters, option)
-			targetMap[idx] = charTarget
-			idx++
-		}
-	}
-
-	// 处理位置选项
-	for _, loc := range state.Board.Locations() {
-		locTarget := findLocation(state, string(loc))
-		if filter == nil || filter(locTarget) {
-			option := fmt.Sprintf("loc_%s", loc)
-			locations = append(locations, option)
-			targetMap[idx] = locTarget
-			idx++
-		}
-	}
-
-	// 合并选项列表
-	availableOptions = append(availableOptions, characters...)
-	availableOptions = append(availableOptions, locations...)
-	availableOptions = append(availableOptions, "完成选择") // 添加完成选项
-
-	// 处理循环选择
 	for {
-		if len(availableOptions) <= 1 { // 只剩"完成选择"时退出
-			break
-		}
-
-		// 显示已选择的目标
-		selectionPrompt := prompt
-		if len(selectedTargets) > 0 {
-			selectionPrompt += fmt.Sprintf("\n已选择: %v", formatSelectedTargets(selectedTargets))
-		}
-
-		selectedIdx, err := cli.ui.Select(selectionPrompt, availableOptions)
+		// 第一步：选择本次要选取的目标类型
+		typeChoice, err := cli.ui.Select("选择要操作的目标类型", []string{"添加角色目标", "添加位置目标", "完成选择"})
 		if err != nil {
 			return nil, err
 		}
 
-		// 检查是否完成选择
-		if selectedIdx == len(availableOptions)-1 { // "完成选择"选项
-			break
+		switch typeChoice {
+		case 0: // 添加角色
+			target, err := cli.chooseCharacterTarget(state, filter)
+			if err != nil {
+				return nil, err
+			}
+			if target != nil {
+				selectedTargets = append(selectedTargets, target)
+			}
+			
+		case 1: // 添加位置
+			target, err := cli.chooseLocationTarget(state, filter)
+			if err != nil {
+				return nil, err
+			}
+			if target != nil {
+				selectedTargets = append(selectedTargets, target)
+			}
+			
+		case 2: // 完成
+			return selectedTargets, nil
 		}
 
-		// 添加到已选列表
-		selectedTarget := targetMap[selectedIdx]
-		selectedTargets = append(selectedTargets, selectedTarget)
-
-		// 从可选列表中移除已选项
-		availableOptions = append(availableOptions[:selectedIdx], availableOptions[selectedIdx+1:]...)
-		for i := selectedIdx; i < len(targetMap)-1; i++ {
-			targetMap[i] = targetMap[i+1]
-		}
-		delete(targetMap, len(targetMap)-1)
-
-		// 询问是否继续选择
-		if len(availableOptions) <= 1 { // 只剩"完成选择"时自动退出
-			break
-		}
+		// 显示当前已选择的
+		cli.ui.ShowInfo(fmt.Sprintf("当前已选目标: %s", formatSelectedTargets(selectedTargets)))
 	}
-
-	return selectedTargets, nil
 }
 
 // 格式化已选择的目标为字符串，用于显示
@@ -183,25 +202,14 @@ func (cli *CLI) processInput(state *models.GameState) error {
 		return nil
 	}
 
-	// 处理selectScript命令
+	// 立即处理剧本选择命令
 	if cmd.Type() == commands.CmdSelectScript {
 		selectCmd := cmd.(*commands.SelectScriptCommand)
 		cli.handleScriptSelection(selectCmd.ScriptName, state)
 		return nil
 	}
 
-	// 新增命令序列处理逻辑
-	cli.commandSequence = append(cli.commandSequence, cmd)
-
-	if !cli.isSequenceComplete() {
-		missing := cli.getMissingInputs()
-		if len(missing) > 0 {
-			fmt.Printf("需要继续输入: %s\n", strings.Join(missing, ", "))
-			return nil
-		}
-	}
-
-	// 创建命令上下文
+	// 创建执行上下文
 	ctx := commands.CommandContext{
 		GameState:     state,
 		CurrentPlayer: getCurrentPlayer(state),
@@ -213,14 +221,82 @@ func (cli *CLI) processInput(state *models.GameState) error {
 		return nil
 	}
 
-	// 执行完整序列
-	if err := cli.executeSequence(ctx); err != nil {
-		fmt.Println("命令执行错误:", err)
-	} else {
-		cli.clearSequence() // 执行成功后清空序列
+	// 根据命令类型动态处理
+	switch cmd.Type() {
+	case commands.CmdPlaceCard, commands.CmdUseGoodwill:
+		return cli.handleTargetCommand(cmd, ctx)
+	default:
+		return cmd.Execute(ctx)
+	}
+}
+
+// 处理需要目标选择的指令
+func (cli *CLI) handleTargetCommand(cmd commands.Command, ctx commands.CommandContext) error {
+	switch cmd.Type() {
+	case commands.CmdPlaceCard:
+		return cli.handleSingleTargetCommand(cmd, ctx)
+	case commands.CmdUseGoodwill:
+		return cli.handleMultiTargetCommand(cmd, ctx)
+	default:
+		return fmt.Errorf("未知指令类型: %s", cmd.Type())
+	}
+}
+
+// 处理单目标指令
+func (cli *CLI) handleSingleTargetCommand(cmd commands.Command, ctx commands.CommandContext) error {
+	target, err := cli.selectTarget(ctx.GameState)
+	if err != nil {
+		return err
+	}
+	
+	// 设置目标到命令并执行
+	switch c := cmd.(type) {
+	case *commands.PlaceCardCommand:
+		c.SetTarget(targetIdentifier(target))
+		return c.Execute(ctx)
+	case *commands.GoodwillCommand: // 如果有单目标使用场景
+		c.SetTarget(targetIdentifier(target))
+		return c.Execute(ctx)
+	}
+	
+	return fmt.Errorf("不支持的指令类型: %s", cmd.Type())
+}
+
+// 处理多目标指令
+func (cli *CLI) handleMultiTargetCommand(cmd commands.Command, ctx commands.CommandContext) error {
+	targets, err := cli.selectMultipleTargets(ctx.GameState, "请选择多个目标（空格确认）", nil)
+	if err != nil {
+		return err
 	}
 
-	return nil
+	switch c := cmd.(type) {
+	case *commands.GoodwillCommand:
+		c.SetTargets(mapTargetIdentifiers(targets))
+		return c.Execute(ctx)
+	}
+	
+	return fmt.Errorf("不支持的指令类型: %s", cmd.Type())
+}
+
+// 将目标转换为标识字符串
+func targetIdentifier(target models.TargetType) string {
+	switch t := target.(type) {
+	case *models.Character:
+		return fmt.Sprintf("char_%s", t.Name)
+	case *models.Location:
+		return fmt.Sprintf("loc_%s", t.LocationType)
+	default:
+		return "unknown_target"
+	}
+}
+
+// 批量转换目标标识
+func mapTargetIdentifiers(targets []models.TargetType) []string {
+	var ids []string
+	for _, t := range targets {
+		ids = append(ids, targetIdentifier(t))
+	}
+	return ids
 }
 
 // 新增剧本选择处理逻辑
@@ -242,85 +318,6 @@ func (cli *CLI) handleScriptSelection(name string, state *models.GameState) {
 	// 这里应该根据name加载对应剧本（需扩展实际剧本加载逻辑）
 	cli.selectedScript = name
 	fmt.Printf("剧本 [%s] 已选择\n", name)
-}
-
-// isSequenceComplete 检查命令序列是否完整可执行
-func (cli *CLI) isSequenceComplete() bool {
-	if len(cli.commandSequence) == 0 {
-		return false
-	}
-
-	cmd := cli.commandSequence[0]
-	switch cmd.Type() {
-	case commands.CmdPlaceCard, commands.CmdUseGoodwill:
-		return len(cli.commandSequence) >= 2
-	default:
-		return true
-	}
-}
-
-// getMissingInputs 获取命令序列中缺少的输入
-func (cli *CLI) getMissingInputs() []string {
-	if len(cli.commandSequence) == 0 {
-		return []string{"请输入一个命令"}
-	}
-
-	firstCmd := cli.commandSequence[0]
-	switch firstCmd.Type() {
-	case commands.CmdPlaceCard, commands.CmdUseGoodwill:
-		if len(cli.commandSequence) < 2 {
-			return []string{"需要选择目标(selectChar/selectLoc)"}
-		}
-	}
-	return nil
-}
-
-// executeSequence 执行当前命令序列
-func (cli *CLI) executeSequence(ctx commands.CommandContext) error {
-	if !cli.isSequenceComplete() {
-		return fmt.Errorf("命令序列不完整")
-	}
-
-	firstCmd := cli.commandSequence[0]
-	switch firstCmd.Type() {
-	case commands.CmdPlaceCard:
-		placeCmd := firstCmd.(*commands.PlaceCardCommand)
-		targetCmd := cli.commandSequence[1]
-
-		var target string
-		switch targetCmd.Type() {
-		case commands.CmdSelectChar:
-			target = "char_" + targetCmd.(*commands.SelectCharCommand).CharacterName
-		case commands.CmdSelectLocation:
-			target = "loc_" + targetCmd.(*commands.SelectLocationCommand).LocationType
-		}
-
-		placeCmd.SetTarget(target)
-		return placeCmd.Execute(ctx)
-
-	case commands.CmdUseGoodwill:
-		goodwillCmd := firstCmd.(*commands.GoodwillCommand)
-		targetCmd := cli.commandSequence[1]
-
-		var target string
-		switch targetCmd.Type() {
-		case commands.CmdSelectChar:
-			target = "char_" + targetCmd.(*commands.SelectCharCommand).CharacterName
-		case commands.CmdSelectLocation:
-			target = "loc_" + targetCmd.(*commands.SelectLocationCommand).LocationType
-		}
-
-		goodwillCmd.Target = target
-		return goodwillCmd.Execute(ctx)
-
-	default:
-		return firstCmd.Execute(ctx)
-	}
-}
-
-// clearSequence 清空命令序列
-func (cli *CLI) clearSequence() {
-	cli.commandSequence = nil
 }
 
 // getCurrentPlayer 从游戏状态获取当前玩家
