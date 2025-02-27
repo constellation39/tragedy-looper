@@ -13,52 +13,60 @@ type Character struct {
 
 func (c *Character) Intrigue() int {
 	// 返回当前角色的阴谋值
-	return c.CharacterState.Intrigue
+	return c.GetAttribute(IntrigueAttribute)
 }
 
 func (c *Character) SetIntrigue(i int) {
 	// 设置角色的阴谋值
-	if i < 0 {
-		c.CharacterState.Intrigue = 0
-		return
-	}
-	c.CharacterState.Intrigue = i
+	c.SetAttribute(IntrigueAttribute, i)
 }
 
 func (c *Character) Paranoia() int {
 	// 返回当前角色的不安值
-	return c.CharacterState.Paranoia
+	return c.GetAttribute(ParanoiaAttribute)
 }
 
 func (c *Character) SetParanoia(i int) {
-	// 设置角色的不安值,不能低于0且不能超过上限
-	if i < 0 {
-		c.CharacterState.Paranoia = 0
-		return
-	}
-	if i > c.ParanoiaLimit {
-		c.CharacterState.Paranoia = c.ParanoiaLimit
-		return
-	}
-	c.CharacterState.Paranoia = i
+	// 设置角色的不安值
+	c.SetAttribute(ParanoiaAttribute, i)
 }
 
 func (c *Character) Goodwill() int {
 	// 返回当前角色的好感度
-	return c.CharacterState.Goodwill
+	return c.GetAttribute(GoodwillAttribute)
 }
 
 func (c *Character) SetGoodwill(i int) {
-	// 设置角色的好感度,不能低于0且不能超过上限
-	if i < 0 {
-		c.CharacterState.Goodwill = 0
-		return
+	// 设置角色的好感度
+	c.SetAttribute(GoodwillAttribute, i)
+}
+
+func (c *Character) GetAttribute(attr AttributeType) int {
+	return c.CharacterState.Attributes.Get(attr)
+}
+
+func (c *Character) SetAttribute(attr AttributeType, value int) {
+	switch attr {
+	case GoodwillAttribute:
+		if value < 0 {
+			value = 0
+		}
+		if value > c.GoodwillLimit {
+			value = c.GoodwillLimit
+		}
+	case ParanoiaAttribute:
+		if value < 0 {
+			value = 0
+		}
+		if value > c.ParanoiaLimit {
+			value = c.ParanoiaLimit
+		}
+	case IntrigueAttribute:
+		if value < 0 {
+			value = 0
+		}
 	}
-	if i > c.GoodwillLimit {
-		c.CharacterState.Goodwill = c.GoodwillLimit
-		return
-	}
-	c.CharacterState.Goodwill = i
+	c.CharacterState.Attributes.Set(attr, value)
 }
 
 func (c *Character) Location() LocationType {
@@ -115,9 +123,7 @@ func (cd *CharacterData) ExistsTag(needTag CharacterTag) bool {
 // CharacterState 角色动态状态
 type CharacterState struct {
 	CurrentLocation LocationType // 当前位置
-	Goodwill        int          // 好感度计数
-	Paranoia        int          // 不安计数
-	Intrigue        int          // 阴谋计数
+	Attributes      Attributes   // 角色属性值
 	IsAlive         bool         // 是否存活
 	Role            *Role        // 当前角色身份
 }
@@ -148,10 +154,12 @@ func NewCharacter(data *CharacterData, role *Role) *Character {
 		CharacterState: &CharacterState{
 			CurrentLocation: data.StartLocation,
 			IsAlive:         true,
-			Goodwill:        0,
-			Paranoia:        0,
-			Intrigue:        0,
-			Role:            role,
+			Attributes: Attributes{
+				GoodwillAttribute: 0,
+				ParanoiaAttribute: 0,
+				IntrigueAttribute: 0,
+			},
+			Role: role,
 		},
 	}
 }
@@ -307,8 +315,10 @@ func (c *Character) ResetState() {
 		CurrentLocation: c.StartLocation,
 		IsAlive:         true,
 		Role:            c.CharacterState.Role, // 保持角色身份
-		Goodwill:        0,
-		Paranoia:        0,
-		Intrigue:        0,
+		Attributes: Attributes{
+			GoodwillAttribute: 0,
+			ParanoiaAttribute: 0,
+			IntrigueAttribute: 0,
+		},
 	}
 }

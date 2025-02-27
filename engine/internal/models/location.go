@@ -15,7 +15,7 @@ const (
 // Location 代表游戏板上的一个具体位置
 type Location struct {
 	LocationType LocationType                 // 位置类型
-	CurIntrigue  int                          // 阴谋标记数量
+	Attributes   Attributes                   // 位置属性值
 	Characters   map[CharacterName]*Character // 当前在此位置的角色
 
 	// 相邻位置关系
@@ -27,33 +27,47 @@ type Location struct {
 }
 
 func (l *Location) Intrigue() int {
-	return l.CurIntrigue
+	return l.GetAttribute(IntrigueAttribute)
 }
 
 func (l *Location) SetIntrigue(i int) {
-	// 确保阴谋值不为负数
-	if i < 0 {
-		l.CurIntrigue = 0
-		return
-	}
-	l.CurIntrigue = i
+	// 设置阴谋值
+	l.SetAttribute(IntrigueAttribute, i)
 }
 
 func (l *Location) Paranoia() int {
-	return 0
+	return l.GetAttribute(ParanoiaAttribute)
 }
 
 func (l *Location) SetParanoia(i int) {
+	// 位置不支持不安值，忽略设置
 	return
 }
 
 func (l *Location) Goodwill() int {
-	return 0
+	return l.GetAttribute(GoodwillAttribute)
 }
 
 func (l *Location) SetGoodwill(i int) {
 	// 位置不支持好感度，忽略设置
 	return
+}
+
+func (l *Location) GetAttribute(attr AttributeType) int {
+	if attr == IntrigueAttribute {
+		return l.Attributes.Get(attr)
+	}
+	return 0 // 保持原有逻辑，location只有intrigue有意义
+}
+
+func (l *Location) SetAttribute(attr AttributeType, value int) {
+	if attr == IntrigueAttribute {
+		if value < 0 {
+			value = 0
+		}
+		l.Attributes.Set(attr, value)
+	}
+	// 其他attr忽略，保持原SetParanoia/SetGoodwill逻辑
 }
 
 func (l *Location) Location() LocationType {
