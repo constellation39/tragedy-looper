@@ -6,8 +6,10 @@ import (
 	"go.uber.org/zap"
 	"os"
 	"strings"
+	"golang.org/x/exp/slices"
 	"tragedy-looper/engine/internal/controllers/commands"
 	"tragedy-looper/engine/internal/models"
+	"github.com/pterm/pterm"
 )
 
 // CLI 控制器现在支持多种输入模式
@@ -19,6 +21,49 @@ type CLI struct {
 	cachedCards      []string           // 缓存当前可用的卡片
 	availableScripts []string           // 可用剧本列表
 	selectedScript   string             // 当前选中剧本
+}
+
+// TerminalUI 使用pterm实现的终端UI
+type TerminalUI struct {
+	selectPrinter       pterm.InteractiveSelectPrinter 
+	multiSelectPrinter  pterm.InteractiveMultiselectPrinter
+}
+
+// Select 使用pterm实现选择功能
+func (t *TerminalUI) Select(title string, options []string) (int, error) {
+	result, err := pterm.DefaultInteractiveSelect.
+		WithOptions(options).
+		WithDefaultText(title).
+		Show()
+	if err != nil {
+		return -1, err
+	}
+	return slices.Index(options, result), nil
+}
+
+// MultiSelect 使用pterm实现多选功能
+func (t *TerminalUI) MultiSelect(title string, options []string) ([]int, error) {
+	selected, err := pterm.DefaultInteractiveMultiselect.
+		WithOptions(options).
+		WithDefaultText(title).
+		Show()
+	if err != nil {
+		return nil, err
+	}
+
+	var indexes []int
+	for _, s := range selected {
+		indexes = append(indexes, slices.Index(options, s))
+	}
+	return indexes, nil
+}
+
+// ShowInfo 使用pterm的带样式的信息显示
+func (t *TerminalUI) ShowInfo(msg string) {
+	pterm.Info.WithPrefix(pterm.Prefix{
+		Text:  "提示",
+		Style: pterm.NewStyle(pterm.FgLightCyan),
+	}).Println(msg)
 }
 
 // NewCLI 创建新的CLI控制器（默认使用terminal UI）
@@ -184,7 +229,8 @@ func findLocation(state *models.GameState, locType string) *models.Location {
 
 // 处理命令行输入
 func (cli *CLI) processInput(state *models.GameState) error {
-	fmt.Print("> ")
+	// 使用pterm的提示样式
+	pterm.FgLightGreen.Print("> ")
 	input, err := cli.inputReader.ReadString('\n')
 	if err != nil {
 		return err
@@ -198,7 +244,7 @@ func (cli *CLI) processInput(state *models.GameState) error {
 	// 解析命令
 	cmd, err := cli.cmdParser.Parse(input)
 	if err != nil {
-		fmt.Println("命令解析错误:", err)
+		pterm.Error.Println("命令解析错误:", err)
 		return nil
 	}
 
@@ -217,7 +263,7 @@ func (cli *CLI) processInput(state *models.GameState) error {
 
 	// 检查start命令时需先选择剧本
 	if cmd.Type() == commands.CmdStartGame && cli.selectedScript == "" {
-		fmt.Println("错误: 请先使用selectScript选择剧本")
+		pterm.Error.Println("错误: 请先使用selectScript选择剧本")
 		return nil
 	}
 
@@ -311,13 +357,13 @@ func (cli *CLI) handleScriptSelection(name string, state *models.GameState) {
 	}
 
 	if !scriptFound {
-		fmt.Printf("错误: 剧本 [%s] 不存在，请选择有效的剧本\n", name)
+		pterm.Error.Printf("错误: 剧本 [%s] 不存在，请选择有效的剧本\n", name)
 		return
 	}
 
 	// 这里应该根据name加载对应剧本（需扩展实际剧本加载逻辑）
 	cli.selectedScript = name
-	fmt.Printf("剧本 [%s] 已选择\n", name)
+	pterm.Success.Printf("剧本 [%s] 已选择\n", name)
 }
 
 // getCurrentPlayer 从游戏状态获取当前玩家
@@ -349,55 +395,87 @@ func (cli *CLI) ShowBoard(state *models.GameState) {
 
 // ShowCharacters 展示角色信息
 func (cli *CLI) ShowCharacters(state *models.GameState) {
-	// 这个功能现在可以使用status命令实现
-	// 但为了保持API兼容性，这里保留此方法
-	fmt.Println("=== 角色列表 ===")
+	// 使用pterm表格呈现角色信息
+	data := [][]string{
+		{"角色", "位置", "状态", "属性"},
+	}
+
 	for _, c := range state.Script.Characters {
-		character := state.Character(c.Name)
-		if character == nil {
+		char := state.Character(c.Name)
+		if char == nil {
 			continue
 		}
-		fmt.Printf("- %s (位置: %s)\n", c.Name, character.Location())
-		if character.Role() != nil {
-			fmt.Printf("  角色: %s\n", character.Role().Type)
+		
+		row := []string{
+			string(c.Name),
+			string(char.Location()),
+			fmt.Sprintf("❤%d", char.State.PhysicalHealth),
+			fmt.Sprintf("疑%d 善%d", char.State.Paranoia, char.State.Goodwill),
 		}
+		data = append(data, row)
 	}
-	fmt.Println("===============")
+
+	pterm.DefaultTable.
+		WithHasHeader(true).
+		WithBoxed(true).
+		WithData(data).
+		Render()
 }
 
 // ShowLocations 展示位置信息
 func (cli *CLI) ShowLocations(state *models.GameState) {
-	// 这个功能现在可以使用status命令实现
-	// 但为了保持API兼容性，这里保留此方法
-	fmt.Println("=== 位置列表 ===")
 	for _, loc := range state.Board.Locations() {
 		location := state.Location(loc)
 		if location == nil {
 			continue
 		}
-		fmt.Printf("- %s (阴谋标记: %d)\n", loc, location.Intrigue())
+		
+		pterm.DefaultSection.Printf("位置: %s\n", loc)
+		pterm.DefaultBarChart.
+			WithBars([]pterm.Bar{
+				{Label: "阴谋标记", Value: location.Intrigue()},
+			}).
+			Render()
+		
 		if len(location.Characters) > 0 {
-			fmt.Print("  角色: ")
+			var charNames []string
 			for name := range location.Characters {
-				fmt.Printf("%s ", name)
+				charNames = append(charNames, string(name))
 			}
-			fmt.Println()
+			cli.ui.ShowInfo(fmt.Sprintf("在场角色：%s", strings.Join(charNames, ", ")))
 		}
 	}
-	fmt.Println("===============")
 }
 
 // ShowGameInfo 展示游戏信息
 func (cli *CLI) ShowGameInfo(state *models.GameState) {
-	fmt.Println("=== 游戏信息 ===")
-	fmt.Printf("剧本: %s\n", state.Script.Title)
-	fmt.Printf("循环: %d/%d\n", state.CurrentLoop, state.Script.MaxLoops)
-	fmt.Printf("日期: %d\n", state.CurrentDay)
-	fmt.Printf("阶段: %s\n", state.CurrentPhase)
-	if state.IsGameOver {
-		fmt.Printf("游戏结束, 获胜方: %s\n", state.WinnerType)
+	panels := pterm.Panels{
+		{
+			{Data: pterm.Sprintf("剧本: %s", pterm.LightMagenta(state.Script.Title))},
+			{Data: pterm.Sprintf("当前阶段: %s", pterm.Cyan(state.CurrentPhase))},
+		},
+		{
+			{Data: pterm.Sprintf("循环进度: %s", 
+				pterm.DefaultProgressbar.
+					WithTotal(state.Script.MaxLoops).
+					WithCurrent(state.CurrentLoop).
+					WithTitle("循环"))},
+			{Data: pterm.Sprintf("当前玩家: %s", state.CurrentPlayer.Name())},
+		},
 	}
-	fmt.Println("===============")
+
+	pterm.DefaultPanel.
+		WithPanels(panels).
+		WithPadding(1).
+		WithSameColumnWidth(true).
+		Render()
+		
+	if state.IsGameOver {
+		pterm.DefaultHeader.
+			WithBackgroundStyle(pterm.NewStyle(pterm.BgRed)).
+			WithTextStyle(pterm.NewStyle(pterm.FgWhite)).
+			Println(fmt.Sprintf("游戏结束! 获胜方: %s", state.WinnerType))
+	}
 }
 
 // 运行CLI
@@ -405,23 +483,34 @@ func (cli *CLI) Run(state *models.GameState) error {
 	// 初始化可用剧本列表（应该从配置文件或目录加载）
 	cli.availableScripts = []string{"新手教学", "第一幕", "校园谜案"}
 
-	// 显示启动界面
-	fmt.Println("=== 悲剧循环游戏控制台 ===")
-	fmt.Println("可用剧本:")
+	// 使用pterm的标题样式
+	pterm.DefaultHeader.
+		WithBackgroundStyle(pterm.NewStyle(pterm.BgLightBlue)).
+		WithTextStyle(pterm.NewStyle(pterm.FgBlack)).
+		Println("悲剧循环游戏控制台")
+	
+	// 使用带编号的列表显示剧本
+	scriptsList := pterm.DefaultBulletList.WithItems(make([]pterm.BulletListItem, 0))
 	for i, script := range cli.availableScripts {
-		fmt.Printf("%d. %s\n", i+1, script)
+		scriptsList.Items = append(scriptsList.Items, pterm.BulletListItem{
+			Level: 0,
+			Text:  fmt.Sprintf("%d. %s", i+1, script),
+		})
 	}
-	fmt.Println("使用 selectScript <剧本名称> 选择剧本")
-	fmt.Println("输入 'help' 获取可用命令列表")
+	scriptsList.Render()
+	
+	pterm.Info.Println("使用 selectScript <剧本名称> 选择剧本")
+	pterm.Info.Println("输入 'help' 获取可用命令列表")
 
 	for !state.IsGameOver {
 		if err := cli.processInput(state); err != nil {
+			pterm.Error.Println(err)
 			return err
 		}
 	}
 
-	fmt.Println("游戏结束!")
-	fmt.Printf("获胜方: %s\n", state.WinnerType)
+	pterm.Success.Println("游戏结束!")
+	pterm.Success.Printf("获胜方: %s\n", state.WinnerType)
 
 	return nil
 }

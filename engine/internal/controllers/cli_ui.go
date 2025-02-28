@@ -9,6 +9,7 @@ import (
 type UI interface {
 	Select(title string, options []string) (int, error)
 	MultiSelect(title string, options []string) ([]int, error)
+	ShowInfo(msg string) // 新增显示信息的方法
 }
 
 // TerminalUI 实现使用pterm的终端UI
@@ -60,5 +61,15 @@ func (t *TerminalUI) MultiSelect(title string, options []string) ([]int, error) 
 	return selectedIndices, nil
 }
 
+// ShowInfo 实现消息显示功能
+func (t *TerminalUI) ShowInfo(msg string) {
+	fmt.Println(msg)
+}
+
 // WebUI 保留空结构以便未来扩展
 type WebUI struct{}
+
+// ShowInfo 实现消息显示功能
+func (w *WebUI) ShowInfo(msg string) {
+	// WebUI暂不实现信息显示功能
+}

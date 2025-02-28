@@ -98,7 +98,7 @@ func (c *SelectLocationCommand) Execute(ctx CommandContext) error {
 
 	// 单独执行该命令时，只是显示位置信息
 	fmt.Printf("已选择位置: %s\n", c.LocationType)
-	fmt.Printf("阴谋标记: %d\n", location.CurIntrigue)
+	fmt.Printf("阴谋标记: %d\n", location.LocationType)
 
 	// 显示该位置上的角色
 	if len(location.Characters) > 0 {

@@ -9,7 +9,7 @@ func NewQuitGameCommand() *QuitGameCommand {
 	return &QuitGameCommand{}
 }
 
-func (c *QuitGameCommand) Type() CommandType { return CmdQuitGame }
+func (c *QuitGameCommand) Type() CommandType { return CmdQuit }
 
 func (c *QuitGameCommand) Validate() error { return nil }
 
