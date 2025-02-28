@@ -1,76 +1,124 @@
 package commands
 
-import "tragedy-looper/engine/internal/models"
-
 type CommandType string
 
 const (
-	// CmdSelectScript 选择剧本
+	// CmdSelectScript - Select a script to play
+	// Syntax: selectScript <ScriptID>
+	// Example: selectScript "first_steps_1"
 	CmdSelectScript CommandType = "selectScript"
-	// CmdStartGame 启动游戏
+
+	// CmdStartGame - Start the game/loop with current setup
+	// Syntax: start
 	CmdStartGame CommandType = "start"
-	// CmdPlaceCard 放置卡牌到角色或地点
+
+	// CmdPlaceCard - Place an action card on a character or location
+	// Syntax: place <CardID> <LocationType|CharacterName>
+	// Example: place "goodwill+1" "Student"
+	// Example: place "intrigue+1" "Hospital"
 	CmdPlaceCard CommandType = "place"
-	// CmdPassAction 跳过当前操作/不执行行动
+
+	// CmdPassAction - Skip current action/do nothing this turn
+	// Syntax: pass
 	CmdPassAction CommandType = "pass"
 
-	// CmdShowCards 查看手牌
+	// CmdShowCards - View your hand of action cards
+	// Syntax: cards
 	CmdShowCards CommandType = "cards"
-	// CmdShowBoard 查看场上情况
+
+	// CmdShowBoard - View the current board state with all characters and locations
+	// Syntax: board
 	CmdShowBoard CommandType = "board"
-	// CmdStatus 查看角色/地点状态
+
+	// CmdStatus - Check status of a character or location
+	// Syntax: status <CharacterName|LocationType>
+	// Example: status "Student"
+	// Example: status "Hospital"
 	CmdStatus CommandType = "status"
-	// CmdViewRules 查看当前脚本规则/角色信息
+
+	// CmdViewRules - View current script rules or role information
+	// Syntax: rules [RoleName|PlotName]
+	// Example: rules "Key Person"
+	// Example: rules "Murder Plan"
 	CmdViewRules CommandType = "rules"
-	// CmdViewIncidents 查看已发生的事件
+
+	// CmdViewIncidents - View incidents that have occurred
+	// Syntax: incidents [Day]
+	// Example: incidents 2
 	CmdViewIncidents CommandType = "incidents"
-	// CmdViewHistory 查看历史记录/事件日志
+
+	// CmdViewHistory - View history log of events
+	// Syntax: history [Day]
+	// Example: history 1
 	CmdViewHistory CommandType = "history"
 
-	// CmdUseGoodwill 使用好感度能力
+	// CmdUseGoodwill - Use a character's goodwill ability
+	// Syntax: goodwill <CharacterName> [TargetName]
+	// Example: goodwill "Shrine Maiden" "Student"
 	CmdUseGoodwill CommandType = "goodwill"
-	// CmdSelectChar 选择角色作为操作目标
+
+	// CmdSelectChar - Select a character as target for an action or ability
+	// Syntax: selectChar <CharacterName>
+	// Example: selectChar "Office Worker"
 	CmdSelectChar CommandType = "selectChar"
-	// CmdSelectLocation 选择地点作为操作目标
+
+	// CmdSelectLocation - Select a location as target
+	// Syntax: selectLoc <LocationType>
+	// Example: selectLoc "Shrine"
 	CmdSelectLocation CommandType = "selectLoc"
-	// CmdFinalGuess 进行最终猜测（主角玩家）
+
+	// CmdFinalGuess - Make final guess about character roles (Protagonist only)
+	// Syntax: guess <CharacterName> <RoleName> [CharacterName RoleName...]
+	// Example: guess "Student" "Key Person" "Office Worker" "Killer"
 	CmdFinalGuess CommandType = "guess"
 
-	// CmdNextPhase 进入下一阶段
+	// CmdNextPhase - Proceed to next game phase
+	// Syntax: next
 	CmdNextPhase CommandType = "next"
-	// CmdEndTurn 结束当前回合
+
+	// CmdEndTurn - End current turn
+	// Syntax: end
 	CmdEndTurn CommandType = "end"
 
-	// CmdMakeNote 添加个人笔记/标记
+	// CmdMakeNote - Add personal note/marking
+	// Syntax: note <Text>
+	// Example: note "I suspect the Student is the Key Person"
 	CmdMakeNote CommandType = "note"
 
-	// CmdHelp 显示帮助信息
+	// CmdHelp - Display help information
+	// Syntax: help [CommandName]
+	// Example: help place
 	CmdHelp CommandType = "help"
-	// CmdQuit 退出游戏
+
+	// CmdQuit - Exit the game
+	// Syntax: quit
 	CmdQuit CommandType = "quit"
-	// CmdMoveCharacter 移动角色
+
+	// CmdMoveCharacter - Move a character to a different location
+	// Syntax: move <CharacterName> <LocationType>
+	// Example: move "Student" "Hospital"
 	CmdMoveCharacter CommandType = "move"
+
+	// Additional commands based on game mechanics
+
+	// CmdCheckParanoia - Check characters at or above paranoia limit
+	// Syntax: paranoia
+	CmdCheckParanoia CommandType = "paranoia"
+
+	// CmdCheckIntrigue - Check intrigue counters on characters/locations
+	// Syntax: intrigue
+	CmdCheckIntrigue CommandType = "intrigue"
+
+	// CmdTimeSpiral - Initiate time spiral discussion between loops (Protagonists)
+	// Syntax: timespiral
+	CmdTimeSpiral CommandType = "timespiral"
+
+	// CmdResolveCards - Resolve all placed cards (Mastermind only)
+	// Syntax: resolve
+	CmdResolveCards CommandType = "resolve"
+
+	// CmdTriggerIncident - Trigger a scheduled incident (Mastermind only)
+	// Syntax: triggerIncident <IncidentName> <CulpritName>
+	// Example: triggerIncident "Murder" "Student"
+	CmdTriggerIncident CommandType = "triggerIncident"
 )
-
-// Command 命令接口
-type Command interface {
-	// Type 返回命令类型
-	Type() CommandType
-
-	// Validate 验证命令参数是否有效
-	// 返回错误表示命令无效，返回nil表示命令有效
-	Validate() error
-
-	// RequiredInputs 返回命令需要的输入描述
-	// 返回一个描述各个输入项的字符串切片，用于提示用户
-	RequiredInputs() []string
-
-	// Execute 执行命令
-	Execute(context CommandContext) error
-}
-
-// CommandContext 命令执行上下文
-type CommandContext struct {
-	GameState     *models.GameState
-	CurrentPlayer models.Player // 当前玩家字段
-}

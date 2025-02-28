@@ -11,7 +11,6 @@ type GameController struct {
 	logging *zap.Logger
 	state   *models.GameState
 	script  *models.Script
-	cli     *CLI // 新增CLI控制器
 }
 
 func NewGameController(logger *zap.Logger, script *models.Script) *GameController {
@@ -19,7 +18,6 @@ func NewGameController(logger *zap.Logger, script *models.Script) *GameControlle
 		state:   models.NewGameState(logger),
 		script:  script,
 		logging: logger,
-		cli:     NewCLI(logger), // 初始化CLI
 	}
 }
 
@@ -327,8 +325,6 @@ func (gc *GameController) dailyPhases() error {
 
 // processDay 执行一天的流程
 func (gc *GameController) processDay() error {
-	gc.cli.Init() // 每天开始时初始化CLI命令提示
-
 	gc.logging.Debug("=================== New Day Started ===================",
 		zap.Int("Day", gc.state.CurrentDay),
 		zap.Int("CurrentLoop", gc.state.CurrentLoop))
@@ -429,13 +425,9 @@ func (gc *GameController) handleDayStart() error {
 func (gc *GameController) handleMastermindAction() error {
 	gc.logging.Debug("MastermindCLI正在放置行动卡...")
 
-	// 初始化PlayerController
-	pc := NewPlayerController(gc.state)
-	pc.SetCLI(gc.cli) // 注入CLI
-
-	// 启动命令交互流程
-	if err := pc.HandleMastermindActions(gc.state.Mastermind); err != nil {
-		return fmt.Errorf("MastermindCLI操作失败: %v", err)
+	// 直接验证主谋操作
+	if err := gc.state.Mastermind.PlaceActionCards(gc.state); err != nil {
+		return err
 	}
 
 	// 验证已放置3张卡牌
@@ -449,15 +441,9 @@ func (gc *GameController) handleMastermindAction() error {
 func (gc *GameController) handleProtagonistsAction() error {
 	gc.logging.Debug("主角团正在放置行动卡...")
 
-	pc := NewPlayerController(gc.state)
-	pc.SetCLI(gc.cli) // 共享同一个CLI实例
-
-	// 为每个主角执行放置操作
+	// 为每个主角直接验证操作
 	for _, p := range gc.state.Protagonists {
-		// 仅显示当前操作主角的信息
-		gc.cli.logging.Info(fmt.Sprintf("当前操作主角：%s (领袖：%v)", p.Name, p.IsLeader))
-
-		if err := pc.HandleProtagonistActions(p); err != nil {
+		if err := p.PlaceActionCards(gc.state); err != nil {
 			return fmt.Errorf("主角%s操作失败: %v", p.ID, err)
 		}
 	}
