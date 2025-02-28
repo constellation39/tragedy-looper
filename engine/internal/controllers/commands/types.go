@@ -99,7 +99,7 @@ const (
 	// Example: move "Student" "Hospital"
 	CmdMoveCharacter CommandType = "move"
 
-	// Additional commands based on game mechanics
+	// Additional commands based on game mechanics from your knowledge base
 
 	// CmdCheckParanoia - Check characters at or above paranoia limit
 	// Syntax: paranoia
@@ -109,16 +109,57 @@ const (
 	// Syntax: intrigue
 	CmdCheckIntrigue CommandType = "intrigue"
 
-	// CmdTimeSpiral - Initiate time spiral discussion between loops (Protagonists)
-	// Syntax: timespiral
-	CmdTimeSpiral CommandType = "timespiral"
-
-	// CmdResolveCards - Resolve all placed cards (Mastermind only)
-	// Syntax: resolve
-	CmdResolveCards CommandType = "resolve"
-
 	// CmdTriggerIncident - Trigger a scheduled incident (Mastermind only)
-	// Syntax: triggerIncident <IncidentName> <CulpritName>
+	// Syntax: triggerIncident <IncidentName> [TargetName]
 	// Example: triggerIncident "Murder" "Student"
 	CmdTriggerIncident CommandType = "triggerIncident"
+
+	// CmdUseMastermindAbility - Use a character's mastermind ability (Mastermind only)
+	// Syntax: mastermindAbility <CharacterName> [TargetName|LocationName]
+	// Example: mastermindAbility "Brain" "Student"
+	CmdUseMastermindAbility CommandType = "mastermindAbility"
+
+	// CmdDayStart - Perform day start actions (Mastermind only)
+	// Syntax: dayStart
+	CmdDayStart CommandType = "dayStart"
+
+	// CmdDayEnd - Perform day end actions (Mastermind only)
+	// Syntax: dayEnd
+	CmdDayEnd CommandType = "dayEnd"
+
+	// CmdLoopStart - Perform loop start actions (Mastermind only)
+	// Syntax: loopStart
+	CmdLoopStart CommandType = "loopStart"
+
+	// CmdLoopEnd - Perform loop end actions and check loss conditions (Mastermind only)
+	// Syntax: loopEnd
+	CmdLoopEnd CommandType = "loopEnd"
+
+	// CmdRevealRole - Reveal a character's role (Mastermind only)
+	// Syntax: revealRole <CharacterName>
+	// Example: revealRole "Student"
+	CmdRevealRole CommandType = "revealRole"
+
+	// CmdKillCharacter - Kill a character (Mastermind only)
+	// Syntax: kill <CharacterName>
+	// Example: kill "Student"
+	CmdKillCharacter CommandType = "kill"
+
+	// CmdKillProtagonists - Kill the protagonists (Mastermind only)
+	// Syntax: killProtagonists
+	CmdKillProtagonists CommandType = "killProtagonists"
+
+	// CmdCheckLossCondition - Check if a specific loss condition is met (Mastermind only)
+	// Syntax: checkLoss <PlotName>
+	// Example: checkLoss "Murder Plan"
+	CmdCheckLossCondition CommandType = "checkLoss"
+
+	// CmdSetupTimeSpiral - Set up a time spiral discussion between loops (Protagonists only)
+	// Syntax: timeSpiral
+	CmdSetupTimeSpiral CommandType = "timeSpiral"
+
+	// CmdChangeLeader - Change the current leader among protagonists
+	// Syntax: changeLeader <PlayerName>
+	// Example: changeLeader "Player2"
+	CmdChangeLeader CommandType = "changeLeader"
 )
