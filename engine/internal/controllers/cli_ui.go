@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"fmt"
 	"github.com/pterm/pterm"
+	"slices"
 )
 
 // UI 接口用于多种交互模式
@@ -13,57 +13,46 @@ type UI interface {
 }
 
 // TerminalUI 实现使用pterm的终端UI
-type TerminalUI struct{}
+type TerminalUI struct {
+	selectPrinter      pterm.InteractiveSelectPrinter
+	multiSelectPrinter pterm.InteractiveMultiselectPrinter
+}
 
+// Select 使用pterm实现选择功能
 func (t *TerminalUI) Select(title string, options []string) (int, error) {
-	prompt := pterm.DefaultInteractiveSelect
-	prompt.DefaultText = title
-	prompt.Options = options
-	prompt.MaxHeight = 10
-
-	result, err := prompt.Show()
+	result, err := pterm.DefaultInteractiveSelect.
+		WithOptions(options).
+		WithDefaultText(title).
+		Show()
 	if err != nil {
 		return -1, err
 	}
-
-	// 直接匹配结果字符串
-	for i, opt := range options {
-		if opt == result {
-			return i, nil
-		}
-	}
-	return -1, fmt.Errorf("invalid selection")
+	return slices.Index(options, result), nil
 }
 
-// MultiSelect 实现多选功能
+// MultiSelect 使用pterm实现多选功能
 func (t *TerminalUI) MultiSelect(title string, options []string) ([]int, error) {
-	prompt := pterm.DefaultInteractiveMultiselect
-	prompt.DefaultText = title
-	prompt.Options = options
-	prompt.MaxHeight = 10
-
-	results, err := prompt.Show()
+	selected, err := pterm.DefaultInteractiveMultiselect.
+		WithOptions(options).
+		WithDefaultText(title).
+		Show()
 	if err != nil {
 		return nil, err
 	}
 
-	// 找出选中项的索引
-	var selectedIndices []int
-	for _, result := range results {
-		for i, opt := range options {
-			if opt == result {
-				selectedIndices = append(selectedIndices, i)
-				break
-			}
-		}
+	var indexes []int
+	for _, s := range selected {
+		indexes = append(indexes, slices.Index(options, s))
 	}
-
-	return selectedIndices, nil
+	return indexes, nil
 }
 
-// ShowInfo 实现消息显示功能
+// ShowInfo 使用pterm的带样式的信息显示
 func (t *TerminalUI) ShowInfo(msg string) {
-	fmt.Println(msg)
+	pterm.Info.WithPrefix(pterm.Prefix{
+		Text:  "提示",
+		Style: pterm.NewStyle(pterm.FgLightCyan),
+	}).Println(msg)
 }
 
 // WebUI 保留空结构以便未来扩展

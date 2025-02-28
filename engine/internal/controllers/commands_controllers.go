@@ -3,13 +3,12 @@ package controllers
 import (
 	"bufio"
 	"fmt"
+	"github.com/pterm/pterm"
 	"go.uber.org/zap"
 	"os"
 	"strings"
-	"golang.org/x/exp/slices"
 	"tragedy-looper/engine/internal/controllers/commands"
 	"tragedy-looper/engine/internal/models"
-	"github.com/pterm/pterm"
 )
 
 // CLI 控制器现在支持多种输入模式
@@ -17,53 +16,10 @@ type CLI struct {
 	logging          *zap.Logger
 	inputReader      *bufio.Reader
 	cmdParser        *commands.CommandParser
-	ui               UI                 // UI接口
-	cachedCards      []string           // 缓存当前可用的卡片
-	availableScripts []string           // 可用剧本列表
-	selectedScript   string             // 当前选中剧本
-}
-
-// TerminalUI 使用pterm实现的终端UI
-type TerminalUI struct {
-	selectPrinter       pterm.InteractiveSelectPrinter 
-	multiSelectPrinter  pterm.InteractiveMultiselectPrinter
-}
-
-// Select 使用pterm实现选择功能
-func (t *TerminalUI) Select(title string, options []string) (int, error) {
-	result, err := pterm.DefaultInteractiveSelect.
-		WithOptions(options).
-		WithDefaultText(title).
-		Show()
-	if err != nil {
-		return -1, err
-	}
-	return slices.Index(options, result), nil
-}
-
-// MultiSelect 使用pterm实现多选功能
-func (t *TerminalUI) MultiSelect(title string, options []string) ([]int, error) {
-	selected, err := pterm.DefaultInteractiveMultiselect.
-		WithOptions(options).
-		WithDefaultText(title).
-		Show()
-	if err != nil {
-		return nil, err
-	}
-
-	var indexes []int
-	for _, s := range selected {
-		indexes = append(indexes, slices.Index(options, s))
-	}
-	return indexes, nil
-}
-
-// ShowInfo 使用pterm的带样式的信息显示
-func (t *TerminalUI) ShowInfo(msg string) {
-	pterm.Info.WithPrefix(pterm.Prefix{
-		Text:  "提示",
-		Style: pterm.NewStyle(pterm.FgLightCyan),
-	}).Println(msg)
+	ui               UI       // UI接口
+	cachedCards      []string // 缓存当前可用的卡片
+	availableScripts []string // 可用剧本列表
+	selectedScript   string   // 当前选中剧本
 }
 
 // NewCLI 创建新的CLI控制器（默认使用terminal UI）
@@ -87,7 +43,7 @@ func (cli *CLI) selectTarget(state *models.GameState) (models.TargetType, error)
 	// 第二步：展示对应类型的候选目标
 	var options []string
 	targetMap := make(map[int]models.TargetType)
-	
+
 	switch category {
 	case 0: // 角色
 		for i, c := range state.Script.Characters {
@@ -105,16 +61,16 @@ func (cli *CLI) selectTarget(state *models.GameState) (models.TargetType, error)
 
 	// 添加返回上级选项
 	options = append(options, "返回上级菜单")
-	
+
 	selectedIdx, err := cli.ui.Select("选择目标 (输入序号)", options)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if selectedIdx >= len(options)-1 { // 选择了返回
 		return cli.selectTarget(state) // 递归调用重新选择类型
 	}
-	
+
 	return targetMap[selectedIdx], nil
 }
 
@@ -141,7 +97,7 @@ func (cli *CLI) chooseCharacterTarget(state *models.GameState, filter func(model
 	return targetMap[selectedIdx], nil
 }
 
-// 新增位置目标选择方法 
+// 新增位置目标选择方法
 func (cli *CLI) chooseLocationTarget(state *models.GameState, filter func(models.TargetType) bool) (models.TargetType, error) {
 	var options []string
 	var targetMap = make(map[int]*models.Location)
@@ -184,7 +140,7 @@ func (cli *CLI) selectMultipleTargets(state *models.GameState, prompt string, fi
 			if target != nil {
 				selectedTargets = append(selectedTargets, target)
 			}
-			
+
 		case 1: // 添加位置
 			target, err := cli.chooseLocationTarget(state, filter)
 			if err != nil {
@@ -193,7 +149,7 @@ func (cli *CLI) selectMultipleTargets(state *models.GameState, prompt string, fi
 			if target != nil {
 				selectedTargets = append(selectedTargets, target)
 			}
-			
+
 		case 2: // 完成
 			return selectedTargets, nil
 		}
@@ -290,37 +246,37 @@ func (cli *CLI) handleTargetCommand(cmd commands.Command, ctx commands.CommandCo
 
 // 处理单目标指令
 func (cli *CLI) handleSingleTargetCommand(cmd commands.Command, ctx commands.CommandContext) error {
-	target, err := cli.selectTarget(ctx.GameState)
-	if err != nil {
-		return err
-	}
-	
-	// 设置目标到命令并执行
-	switch c := cmd.(type) {
-	case *commands.PlaceCardCommand:
-		c.SetTarget(targetIdentifier(target))
-		return c.Execute(ctx)
-	case *commands.GoodwillCommand: // 如果有单目标使用场景
-		c.SetTarget(targetIdentifier(target))
-		return c.Execute(ctx)
-	}
-	
+	//target, err := cli.selectTarget(ctx.GameState)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//// 设置目标到命令并执行
+	//switch c := cmd.(type) {
+	//case *commands.PlaceCardCommand:
+	//	c.SetTarget(targetIdentifier(target))
+	//	return c.Execute(ctx)
+	//case *commands.GoodwillCommand: // 如果有单目标使用场景
+	//	c.SetTarget(targetIdentifier(target))
+	//	return c.Execute(ctx)
+	//}
+
 	return fmt.Errorf("不支持的指令类型: %s", cmd.Type())
 }
 
 // 处理多目标指令
 func (cli *CLI) handleMultiTargetCommand(cmd commands.Command, ctx commands.CommandContext) error {
-	targets, err := cli.selectMultipleTargets(ctx.GameState, "请选择多个目标（空格确认）", nil)
-	if err != nil {
-		return err
-	}
+	//targets, err := cli.selectMultipleTargets(ctx.GameState, "请选择多个目标（空格确认）", nil)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//switch c := cmd.(type) {
+	//case *commands.GoodwillCommand:
+	//	c.SetTargets(mapTargetIdentifiers(targets))
+	//	return c.Execute(ctx)
+	//}
 
-	switch c := cmd.(type) {
-	case *commands.GoodwillCommand:
-		c.SetTargets(mapTargetIdentifiers(targets))
-		return c.Execute(ctx)
-	}
-	
 	return fmt.Errorf("不支持的指令类型: %s", cmd.Type())
 }
 
@@ -395,31 +351,31 @@ func (cli *CLI) ShowBoard(state *models.GameState) {
 
 // ShowCharacters 展示角色信息
 func (cli *CLI) ShowCharacters(state *models.GameState) {
-	// 使用pterm表格呈现角色信息
-	data := [][]string{
-		{"角色", "位置", "状态", "属性"},
-	}
-
-	for _, c := range state.Script.Characters {
-		char := state.Character(c.Name)
-		if char == nil {
-			continue
-		}
-		
-		row := []string{
-			string(c.Name),
-			string(char.Location()),
-			fmt.Sprintf("❤%d", char.State.PhysicalHealth),
-			fmt.Sprintf("疑%d 善%d", char.State.Paranoia, char.State.Goodwill),
-		}
-		data = append(data, row)
-	}
-
-	pterm.DefaultTable.
-		WithHasHeader(true).
-		WithBoxed(true).
-		WithData(data).
-		Render()
+	//// 使用pterm表格呈现角色信息
+	//data := [][]string{
+	//	{"角色", "位置", "状态", "属性"},
+	//}
+	//
+	//for _, c := range state.Script.Characters {
+	//	char := state.Character(c.Name)
+	//	if char == nil {
+	//		continue
+	//	}
+	//
+	//	row := []string{
+	//		string(c.Name),
+	//		string(char.Location()),
+	//		fmt.Sprintf("❤%d", char.PhysicalHealth),
+	//		fmt.Sprintf("疑%d 善%d", char.State.Paranoia, char.State.Goodwill),
+	//	}
+	//	data = append(data, row)
+	//}
+	//
+	//pterm.DefaultTable.
+	//	WithHasHeader(true).
+	//	WithBoxed(true).
+	//	WithData(data).
+	//	Render()
 }
 
 // ShowLocations 展示位置信息
@@ -429,14 +385,14 @@ func (cli *CLI) ShowLocations(state *models.GameState) {
 		if location == nil {
 			continue
 		}
-		
+
 		pterm.DefaultSection.Printf("位置: %s\n", loc)
 		pterm.DefaultBarChart.
 			WithBars([]pterm.Bar{
 				{Label: "阴谋标记", Value: location.Intrigue()},
 			}).
 			Render()
-		
+
 		if len(location.Characters) > 0 {
 			var charNames []string
 			for name := range location.Characters {
@@ -449,33 +405,33 @@ func (cli *CLI) ShowLocations(state *models.GameState) {
 
 // ShowGameInfo 展示游戏信息
 func (cli *CLI) ShowGameInfo(state *models.GameState) {
-	panels := pterm.Panels{
-		{
-			{Data: pterm.Sprintf("剧本: %s", pterm.LightMagenta(state.Script.Title))},
-			{Data: pterm.Sprintf("当前阶段: %s", pterm.Cyan(state.CurrentPhase))},
-		},
-		{
-			{Data: pterm.Sprintf("循环进度: %s", 
-				pterm.DefaultProgressbar.
-					WithTotal(state.Script.MaxLoops).
-					WithCurrent(state.CurrentLoop).
-					WithTitle("循环"))},
-			{Data: pterm.Sprintf("当前玩家: %s", state.CurrentPlayer.Name())},
-		},
-	}
-
-	pterm.DefaultPanel.
-		WithPanels(panels).
-		WithPadding(1).
-		WithSameColumnWidth(true).
-		Render()
-		
-	if state.IsGameOver {
-		pterm.DefaultHeader.
-			WithBackgroundStyle(pterm.NewStyle(pterm.BgRed)).
-			WithTextStyle(pterm.NewStyle(pterm.FgWhite)).
-			Println(fmt.Sprintf("游戏结束! 获胜方: %s", state.WinnerType))
-	}
+	//panels := pterm.Panels{
+	//	{
+	//		{Data: pterm.Sprintf("剧本: %s", pterm.LightMagenta(state.Script.Title))},
+	//		{Data: pterm.Sprintf("当前阶段: %s", pterm.Cyan(state.CurrentPhase))},
+	//	},
+	//	{
+	//		{Data: pterm.Sprintf("循环进度: %s",
+	//			pterm.DefaultProgressbar.
+	//				WithTotal(state.Script.MaxLoops).
+	//				WithCurrent(state.CurrentLoop).
+	//				WithTitle("循环"))},
+	//		{Data: pterm.Sprintf("当前玩家: %s", state.CurrentPlayer.Name())},
+	//	},
+	//}
+	//
+	//pterm.DefaultPanel.
+	//	WithPanels(panels).
+	//	WithPadding(1).
+	//	WithSameColumnWidth(true).
+	//	Render()
+	//
+	//if state.IsGameOver {
+	//	pterm.DefaultHeader.
+	//		WithBackgroundStyle(pterm.NewStyle(pterm.BgRed)).
+	//		WithTextStyle(pterm.NewStyle(pterm.FgWhite)).
+	//		Println(fmt.Sprintf("游戏结束! 获胜方: %s", state.WinnerType))
+	//}
 }
 
 // 运行CLI
@@ -488,7 +444,7 @@ func (cli *CLI) Run(state *models.GameState) error {
 		WithBackgroundStyle(pterm.NewStyle(pterm.BgLightBlue)).
 		WithTextStyle(pterm.NewStyle(pterm.FgBlack)).
 		Println("悲剧循环游戏控制台")
-	
+
 	// 使用带编号的列表显示剧本
 	scriptsList := pterm.DefaultBulletList.WithItems(make([]pterm.BulletListItem, 0))
 	for i, script := range cli.availableScripts {
@@ -498,7 +454,7 @@ func (cli *CLI) Run(state *models.GameState) error {
 		})
 	}
 	scriptsList.Render()
-	
+
 	pterm.Info.Println("使用 selectScript <剧本名称> 选择剧本")
 	pterm.Info.Println("输入 'help' 获取可用命令列表")
 
