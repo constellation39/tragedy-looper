@@ -122,10 +122,12 @@ func (cd *CharacterData) ExistsTag(needTag CharacterTag) bool {
 
 // CharacterState 角色动态状态
 type CharacterState struct {
-	CurrentLocation LocationType // 当前位置
-	Attributes      Attributes   // 角色属性值
-	IsAlive         bool         // 是否存活
-	Role            *Role        // 当前角色身份
+	CurrentLocation    LocationType   // 当前位置
+	Attributes         Attributes     // 角色属性值
+	IsAlive            bool           // 是否存活
+	IsMoved            bool           // 本日是否已移动
+	ForbiddenLocations []LocationType // 禁止移动的位置
+	Role               *Role          // 当前角色身份
 }
 
 // CharacterTrait 角色特征

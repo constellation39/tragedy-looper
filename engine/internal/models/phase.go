@@ -1,5 +1,31 @@
 package models
 
+// GamePhase 表示整个游戏的主要阶段
+type GamePhase string
+
+const (
+	PhaseGameStart       GamePhase = "GameStart"       // 游戏开始
+	PhasePreparation     GamePhase = "Preparation"     // 准备阶段
+	PhaseScriptSelection GamePhase = "ScriptSelection" // 选择剧本
+	PhaseCharacterSetup  GamePhase = "CharacterSetup"  // 设定角色与事件
+	PhaseLoop            GamePhase = "Loop"            // 循环阶段(包含多个循环)
+	PhaseFinalGuess      GamePhase = "FinalGuess"      // 最终猜测阶段
+	PhaseGameEnd         GamePhase = "GameEnd"         // 游戏结束
+)
+
+// LoopPhase 表示一个循环内的各个阶段
+type LoopPhase string
+
+const (
+	PhaseLoopStart      LoopPhase = "LoopStart"      // 循环开始
+	PhaseTimeSpiral     LoopPhase = "TimeSpiral"     // Time Spiral讨论阶段
+	PhaseCharacterReset LoopPhase = "CharacterReset" // 角色归位阶段
+	PhaseCountersReset  LoopPhase = "CountersReset"  // 移除和替换计数器阶段
+	PhaseReturnCards    LoopPhase = "ReturnCards"    // 玩家取回卡牌阶段
+	PhaseDay            LoopPhase = "Day"            // 每日流程阶段(包含多天)
+	PhaseLoopEnd        LoopPhase = "LoopEnd"        // 循环结束，检查胜利条件
+)
+
 // DayPhase 表示一天中的各个阶段
 type DayPhase string
 
